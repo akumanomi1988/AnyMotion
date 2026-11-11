@@ -7,6 +7,7 @@ import {withinRoot} from '../core/filenames.js';
 import type {Episode} from '../core/contracts.js';
 import {validateEpisode} from '../core/contracts.js';
 import type {ReleaseManifest} from '../production/package.js';
+import {verifySoundscape} from '../audio/soundscape.js';
 
 export interface EditorialDecision {
   schemaVersion:'1.0'; episodeId:string; preset:'final'; releaseSha256:string;
@@ -37,6 +38,12 @@ export async function verifiedRelease(episodeInput:Episode,preset:'preview'|'fin
       'speech-fit-report.json','vera.srt','leo.srt','combined.srt'])
       required.push(`productions/${episode.episodeId}/locales/${locale}/${rel}`);
   }
+  const soundtrack=await verifySoundscape(episode,root);
+  const soundPrefix=`productions/${episode.episodeId}/audio/`;
+  const declaredSound=Object.keys(manifest.artifacts).filter(path=>path.startsWith(soundPrefix));
+  const neededSound=soundtrack?['music.wav','sfx.wav','sound-design.json','sound-manifest.json'].map(f=>soundPrefix+f):[];
+  if(declaredSound.length!==neededSound.length||declaredSound.some(path=>!neededSound.includes(path))||neededSound.some(path=>!manifest.artifacts[path]))
+   throw new Error('Soundtrack changed after release packaging');
   if(manifest.locales.length<1||manifest.locales.length!==new Set(manifest.locales).size || required.some(rel=>!manifest.artifacts[rel]))
     throw new Error('Incomplete release: required media/voice/QA evidence missing');
   for(const [rel,checksum] of Object.entries(manifest.artifacts)){

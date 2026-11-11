@@ -7,6 +7,7 @@ import { spawn } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
 import { validateEpisode, type Episode } from './core/contracts.js';
 import { createSubtitles } from './core/subtitles.js';
+import {createSoundscape} from './audio/soundscape.js';
 import { frameCount } from './core/timing.js';
 import { withinRoot } from './core/filenames.js';
 import { renderSvgFrame } from './renderer/scene.js';
@@ -195,16 +196,17 @@ async function main(): Promise<void> {
     console.log(`AnyMotion Studio (solo lectura) http://127.0.0.1:${service.port}`);
     return;
   }
-  if (!command || !['validate','subtitles','render','dub','mux','package','pipeline','jobs','generate','localize','editorial-check','editorial-approve','youtube-private','backup','backup-verify','restore','thumbnail','youtube-thumbnail','youtube-schedule','editorial-analyze','generate-staged','youtube-kit','autopilot'].includes(command) || !file) {
+  if (!command || !['validate','subtitles','render','dub','mux','package','pipeline','jobs','generate','localize','editorial-check','editorial-approve','youtube-private','backup','backup-verify','restore','thumbnail','youtube-thumbnail','youtube-schedule','editorial-analyze','generate-staged','youtube-kit','autopilot','soundtrack'].includes(command) || !file) {
     console.log(`Usage:
   node dist/cli.js doctor
   node dist/cli.js studio
   node dist/cli.js validate examples/pilot.json
   node dist/cli.js subtitles examples/pilot.json
   node dist/cli.js render examples/pilot.json --preset preview|final
+  node dist/cli.js soundtrack examples/pilot.json --design examples/pilot.sound-design.json
   node dist/cli.js dub examples/pilot.json --locale es-ES|en-US [--translation examples/pilot.en-US.json]
   node dist/cli.js mux examples/pilot.json --locale es-ES|en-US --preset preview|final
-  node dist/cli.js pipeline examples/pilot.json --preset preview|final --translation-en examples/pilot.en-US.json
+  node dist/cli.js pipeline examples/pilot.json --preset preview|final --translation-en examples/pilot.en-US.json [--sound-design examples/pilot.sound-design.json]
   node dist/cli.js jobs examples/pilot.json
   node dist/cli.js generate examples/story-brief.json --out examples/new-episode.json
   node dist/cli.js localize examples/pilot.json --locale en-US --out examples/EP0001.en-US.draft.json
@@ -284,6 +286,13 @@ async function main(): Promise<void> {
   }
   if (command === 'validate') { console.log(`PASS ${episode.episodeId}: ${episode.scenes.length} scenes, ${episode.durationMs}ms`); return; }
   if (command === 'subtitles') { const files = await exportSrt(episode); console.log(files.join('\n')); return; }
+  if(command==='soundtrack'){
+    const o=parseArgs(args,['--design']);
+    if(!o['--design'])throw new Error('Soundtrack requires --design JSON');
+    const design=JSON.parse(await readFile(resolve(ROOT,o['--design']),'utf8')) as unknown;
+    const result=await createSoundscape(episode,design);
+    console.log(`SOUNDSCAPE_READY ${result.episodeId}: music.wav, sfx.wav; original procedural source`);return;
+  }
   if(command==='backup'||command==='backup-verify'||command==='restore'){
     const o=parseArgs(args,command==='backup'?['--to']:['--from']);
     const location=command==='backup'?o['--to']:o['--from'];
@@ -376,12 +385,16 @@ async function main(): Promise<void> {
     console.log(`TECHNICAL_PASS ${m.episodeId}: ${Object.keys(m.artifacts).length} artifacts. EDITORIAL_PENDING; no publication permitted.`);return;
   }
   if(command==='pipeline'){
-    const o=parseArgs(args,['--preset','--translation-en']);
+    const o=parseArgs(args,['--preset','--translation-en','--sound-design']);
     if(o['--preset']!=='preview'&&o['--preset']!=='final')throw new Error('pipeline needs --preset preview|final');
     if(!o['--translation-en'])throw new Error('pipeline requires --translation-en path');
     if(process.env.ANYMOTION_TEST_VOICE!=='synthetic'&&!configuredHttpTts())await runTool('espeak',['--version'],5000).catch(()=>{throw new Error('eSpeak diagnostic TTS not available on PATH; install eSpeak before pipeline:preview');});
     const english=await localizationFile(episode,'en-US',o['--translation-en']);
     const source=sourceLocalization(episode);
+    if(o['--sound-design']){
+      const design=JSON.parse(await readFile(resolve(ROOT,o['--sound-design']),'utf8')) as unknown;
+      await createSoundscape(episode,design);
+    }
     const db=new ProductionJobStore(join(ROOT,'workspace','jobs.sqlite'));
     const inputHash=createHash('sha256').update(JSON.stringify(episode)).digest('hex');
     try {

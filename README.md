@@ -196,3 +196,16 @@ node dist/cli.js editorial-analyze examples/episode-0002-editorial-draft.json
 ```
 
 The preview creates 540-second H.264/AAC videos in es-ES and en-US with separate character SRTs. Without a configured expressive commercial TTS provider this command uses **eSpeak diagnostic** output that is explicitly unpublishable; this does not imply voice or artistic approval. Do not confuse this authored golden example with autonomous generation using a live model, which remains unverified.
+
+## Música, efectos y mezcla independiente (P0 technical)
+
+El motor incluye un compositor **procedimental original**, sin samples ni obras musicales externas. Los efectos se describen mediante un contrato cerrado (`tap`, `pop`, `chime`, `swish`) con tiempos absolutos y ganancia limitada. Se exportan `audio/music.wav`, `audio/sfx.wav`, `audio/sound-design.json` y `audio/sound-manifest.json`; cada idioma conserva `dialogue.wav` y genera `full_audio.wav` usando **las mismas pistas**. Se rechazan cambios de sonido posteriores al doblaje o empaquetado sin una revisión de episodio.
+
+```bash
+npm run build
+npm run soundtrack:pilot
+# Desde una producción limpia, genera y utiliza el soundscape en el pipeline:
+ANYMOTION_TEST_VOICE=synthetic npm run pipeline:preview -- --sound-design examples/pilot.sound-design.json
+```
+
+La voz `synthetic` **solo sirve para pruebas técnicas**, no para contenidos publicables. La composición sonora generada es una muestra funcional, no una validación de música comercial ni de mezcla profesional. Para un episodio nuevo, crear un archivo `*.sound-design.json` con los cues musicales y efectos aprobados, antes de producir los doblajes. No deben mezclarse pistas musicales con licencias desconocidas.

@@ -8,6 +8,7 @@ import { allDialogue, validateEpisode, type CharacterId, type DialogueLine, type
 import { serializeSrt } from '../core/subtitles.js';
 import { withinRoot } from '../core/filenames.js';
 import {configuredHttpTts,type HttpTtsProvider} from './tts-http.js';
+import {mixSoundtrack,verifySoundscape} from './soundscape.js';
 
 const SAMPLE_RATE = 24000;
 const MAX_TEMPO = 1.2;
@@ -15,7 +16,7 @@ const supportedLocales = ['es-ES', 'en-US'] as const;
 export type Locale = typeof supportedLocales[number];
 export interface Localization { schemaVersion: '1.0'; episodeId: string; locale: Locale; lines: Record<string, string> }
 export interface VoiceClipReport { lineId: string; characterId: CharacterId; sourceDurationMs: number; fittedDurationMs: number; windowMs: number; speakingRate: number; tempo: number; clipped: false }
-export interface DubManifest { schemaVersion: '1.0'; status: 'LOCALIZED'; episodeId: string; locale: Locale; provider: string; timelineSha256: string; localizationSha256: string; clips: VoiceClipReport[]; files: Record<string,string>; }
+export interface DubManifest { schemaVersion: '1.0'; status: 'LOCALIZED'; episodeId: string; locale: Locale; provider: string; timelineSha256: string; localizationSha256: string; soundtrackManifestSha256?: string; clips: VoiceClipReport[]; files: Record<string,string>; }
 
 export function validateLocalization(input: unknown, episode: Episode, locale: Locale): Localization {
   if (typeof input !== 'object' || input === null || Array.isArray(input)) throw new Error('Localization must be an object');
@@ -83,6 +84,8 @@ export async function dubEpisode(episodeInput: Episode, localizationInput: unkno
   const localization = validateLocalization(localizationInput, episode, locale);
   const provider = optionalProvider ?? configuredHttpTts();
   const providerId=process.env.ANYMOTION_TEST_VOICE==='synthetic'?'synthetic-ci-test':provider?.providerId ?? 'espeak-diagnostic';
+  const soundscape=await verifySoundscape(episode,root);
+  const soundHash=soundscape?.manifestHash;
   const base = withinRoot(root, join('productions', episode.episodeId));
   const finalDir = withinRoot(base, join('locales', locale));
   const completed = join(finalDir, 'dub-manifest.json');
@@ -90,7 +93,7 @@ export async function dubEpisode(episodeInput: Episode, localizationInput: unkno
   const localeDigest = hash(JSON.stringify(localization));
   if (await exist(completed)) {
     const prev = JSON.parse(await readFile(completed, 'utf8')) as DubManifest;
-    if (prev.provider!==providerId || prev.timelineSha256 !== jsonDigest || prev.localizationSha256 !== localeDigest) throw new Error('Inputs changed; existing localized artifact cannot be reused');
+    if (prev.provider!==providerId || prev.timelineSha256 !== jsonDigest || prev.localizationSha256 !== localeDigest || prev.soundtrackManifestSha256!==soundHash) throw new Error('Inputs changed; existing localized artifact cannot be reused');
     for (const [name, digest] of Object.entries(prev.files)) {
       const actual = await hashFile(join(finalDir, name));
       if (actual !== digest) throw new Error(`Localized artifact has been modified: ${name}`);
@@ -158,15 +161,16 @@ export async function dubEpisode(episodeInput: Episode, localizationInput: unkno
       clips.push({lineId:line.lineId, characterId:line.characterId, sourceDurationMs:duration, fittedDurationMs:Math.round(samples * 1000 / SAMPLE_RATE), windowMs:allowedMs, speakingRate, tempo:Number(tempo.toFixed(5)), clipped:false});
       rendered.push({...line, text});
     }
-    await writeFile(join(tmp, 'dialogue.wav'), pcmWave(audio));
-    await writeFile(join(tmp, 'full_audio.wav'), pcmWave(audio));
+    const dialogueWav=pcmWave(audio);
+    await writeFile(join(tmp, 'dialogue.wav'),dialogueWav);
+    await writeFile(join(tmp, 'full_audio.wav'),soundscape?mixSoundtrack(dialogueWav,soundscape.music,soundscape.sfx,episode.durationMs):dialogueWav);
     for (const actor of ['vera', 'leo'] as const) await writeFile(join(tmp, `${actor}.srt`), serializeSrt(rendered.filter(line => line.characterId === actor)));
     await writeFile(join(tmp, 'combined.srt'), serializeSrt(rendered, true));
     await writeFile(join(tmp, 'speech-fit-report.json'), JSON.stringify({schemaVersion:'1.0', provider:providerId, locale, clips}, null, 2)+'\n');
     const fileNames = ['dialogue.wav','full_audio.wav','vera.srt','leo.srt','combined.srt','speech-fit-report.json',...clips.map(c=>`${c.lineId}.wav`)];
     const files: Record<string,string> = {};
     for (const name of fileNames) files[name] = await hashFile(join(tmp, name));
-    const manifest: DubManifest = {schemaVersion:'1.0',status:'LOCALIZED',episodeId:episode.episodeId,locale, provider:providerId, timelineSha256:jsonDigest,localizationSha256:localeDigest,clips,files};
+    const manifest: DubManifest = {schemaVersion:'1.0',status:'LOCALIZED',episodeId:episode.episodeId,locale, provider:providerId, timelineSha256:jsonDigest,localizationSha256:localeDigest,...(soundHash?{soundtrackManifestSha256:soundHash}:{}),clips,files};
     await writeFile(join(tmp, 'dub-manifest.json'), JSON.stringify(manifest,null,2)+'\n');
     await mkdir(dirname(finalDir),{recursive:true});
     if (await exist(finalDir)) {

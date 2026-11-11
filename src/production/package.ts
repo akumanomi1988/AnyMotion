@@ -6,6 +6,7 @@ import {type Episode, validateEpisode} from '../core/contracts.js';
 import {withinRoot} from '../core/filenames.js';
 import type {Locale,DubManifest} from '../audio/dubbing.js';
 import type {FrozenTimeline} from '../timeline/freeze.js';
+import {verifySoundscape} from '../audio/soundscape.js';
 
 export interface ReleaseManifest {
   schemaVersion:'1.0'; episodeId:string; preset:'preview'|'final'; locales:Locale[];
@@ -27,6 +28,12 @@ export async function packageEpisode(episodeInput:Episode,preset:'preview'|'fina
   const qa=JSON.parse(await readFile(join(masterDir,'quality-report.json'),'utf8')) as {technicalPass:boolean};
   if(masterManifest.status!=='MASTER_RENDERED'||masterManifest.episodeId!==episode.episodeId||masterManifest.sourceHash!==sha(JSON.stringify(episode))||qa.technicalPass!==true)throw new Error('Master QA has not passed');
   const hashes:Record<string,string>={};
+  const soundtrack=await verifySoundscape(episode,root);
+  if(soundtrack){
+    for(const [filename,checksum] of Object.entries(soundtrack.manifest.files))
+      hashes[join('productions',episode.episodeId,'audio',filename).replaceAll('\\','/')]=checksum;
+    hashes[join('productions',episode.episodeId,'audio','sound-manifest.json').replaceAll('\\','/')]=soundtrack.manifestHash;
+  }
   hashes[join('productions',episode.episodeId,'timeline.json').replaceAll('\\','/')]=sha(await readFile(join(dir,'timeline.json')));
   for(const name of ['manifest.json','quality-report.json'])
     hashes[join('productions',episode.episodeId,preset,name).replaceAll('\\','/')]=await shaFile(join(masterDir,name));
@@ -39,7 +46,7 @@ export async function packageEpisode(episodeInput:Episode,preset:'preview'|'fina
     if(locale!=='es-ES'&&locale!=='en-US')throw new Error('Unsupported locale');
     const folder=join(dir,'locales',locale);
     const dub=JSON.parse(await readFile(join(folder,'dub-manifest.json'),'utf8')) as DubManifest;
-    if(dub.episodeId!==episode.episodeId||dub.locale!==locale||dub.status!=='LOCALIZED'||dub.timelineSha256!==sha(JSON.stringify(episode)))throw new Error(`Dub validation failed for ${locale}`);
+    if(dub.episodeId!==episode.episodeId||dub.locale!==locale||dub.status!=='LOCALIZED'||dub.timelineSha256!==sha(JSON.stringify(episode))||dub.soundtrackManifestSha256!==soundtrack?.manifestHash)throw new Error(`Dub validation failed for ${locale}`);
     for(const [file,checksum] of Object.entries(dub.files)){
       const relative=join('productions',episode.episodeId,'locales',locale,file).replaceAll('\\','/');
       if(await shaFile(join(folder,file))!==checksum)throw new Error(`Dub hash mismatch ${relative}`);

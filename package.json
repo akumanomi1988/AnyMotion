@@ -23,6 +23,7 @@
     "pipeline:preview": "node dist/cli.js pipeline examples/pilot.json --preset preview --translation-en examples/pilot.en-US.json",
     "pipeline:final": "node dist/cli.js pipeline examples/pilot.json --preset final --translation-en examples/pilot.en-US.json",
     "fixture:load": "node dist/tools/load-fixture.js",
+    "soundtrack:pilot": "node dist/cli.js soundtrack examples/pilot.json --design examples/pilot.sound-design.json",
     "pipeline:episode2": "node dist/cli.js pipeline examples/episode-0002-editorial-draft.json --preset preview --translation-en examples/episode-0002.en-US-editorial-draft.json"
   },
   "devDependencies": {

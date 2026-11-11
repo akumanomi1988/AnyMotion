@@ -87,3 +87,11 @@ Critical remaining work: Remotion versus Motion Canvas choice and licensing, act
 - Added independently authored creative draft EP0002 ("El tratado de los veintidós grados") and en-US culturally localized draft. 10 scenes, 90 lines, 540 seconds, 40 camera changes. This is not a generated episode.
 - Actual Linux FFmpeg preview validation: 6,480 frames at 640×360/12 fps, full 540.000 s H.264 picture; 90 eSpeak diagnostic speech clips per locale; two final H.264/AAC preview MP4s with the same 540.000 s duration; 202 content-hashed release artifacts and isolated SRT per character.
 - Review status remains EDITORIAL_PENDING. No natural voice, original art approval, actual cloud LLM, source TTS pipeline on Windows or commercial publish validation is implied.
+
+## Iteración 14 — Sound design and shared sound stems (technical)
+
+- `src/audio/soundscape.ts` adds strict, versioned, allowlisted cues for original procedural SFX and a short original musical motif. The system does not fetch audio from third parties, generate arbitrary notes from an LLM or use copyright-protected samples.
+- `sound-design.json`, `music.wav`, `sfx.wav` and `sound-manifest.json` are stored per episode, with content hashes and provenance. Editing audio, its design or its manifest invalidates the release.
+- Dubbing now exports dialogue and full mix separately, with SFX/music identical across locales and sound manifest dependency stored in the dub manifest. Mix clipping triggers a hard error.
+- The package and editorial release verification bind soundtrack stems and source design. Missing or added sound files after packaging fail validation.
+- Verified in isolated Linux tests with 58 passing assertions; an end-to-end bilingual preview with synthetic diagnostic voice has been exercised. Production TTS, soundtrack artistic acceptance and hardware/Windows benchmarking remain OPEN.
