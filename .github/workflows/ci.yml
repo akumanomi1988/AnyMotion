@@ -5,16 +5,39 @@ on:
   pull_request:
 permissions:
   contents: read
+concurrency:
+  group: anymotion-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  validate:
-    runs-on: ubuntu-latest
+  contracts:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install media tools for integration testing
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg espeak
+      - run: npm install --no-audit --no-fund
+      - run: npm test
+
+  media-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install native media dependencies (bounded)
+        run: |
+          if ! command -v espeak >/dev/null || ! command -v ffmpeg >/dev/null; then
+            timeout 150s sudo apt-get update -qq
+            timeout 150s sudo apt-get install -y ffmpeg espeak
+          fi
       - run: npm install --no-audit --no-fund
       - run: npm test
       - run: npm run doctor
@@ -28,5 +51,6 @@ jobs:
             ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of default=nw=1:nk=1 "$file" | grep -qx aac
           done
           test -s productions/EP0001/release_preview.json
-      - name: Verify rerun is idempotent
+          test -s productions/EP0001/timeline.json
+      - name: Verify idempotency
         run: npm run pipeline:preview

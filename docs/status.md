@@ -12,7 +12,7 @@ Date: 2026-11-11. The normative source requirements are `docs/master-blueprint.m
 | F5: YouTube integration | NOT STARTED | Packaging forbids public release without editorial approval | OAuth, private API upload, channel verification, official localization workflow |
 | F6: six-episode commercial pilot | NOT STARTED | No publication done | Six approved original episodes and measurable retention/cost data |
 
-Local integration evidence: `npm test` passed 23 tests; two same-input pipeline executions passed with 78s H.264/AAC for both locales; 44 release artifacts and no automatic publication. CI may be pending and must be checked independently.
+Local integration evidence: `npm test` passed 24 tests; two same-input pipeline executions passed with 78s H.264/AAC for both locales; 44 release artifacts and no automatic publication. A synthetic **9-minute** technical load fixture passed FFprobe: 6,480 preview frames, 540.000 s, H.264 640×360/12 fps, 16.8 seconds measured render in the current Linux test environment. This fixture is repetitive by design and explicitly NOT publishable. CI may be pending and must be checked independently.
 
 ## Known limitations and risks
 

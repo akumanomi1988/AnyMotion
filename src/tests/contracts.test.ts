@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { resolve, join } from 'node:path';
 import { validateEpisode, EpisodeValidationError, type Episode } from '../core/contracts.js';
 import { createSubtitles, formatSrtTime, serializeSrt } from '../core/subtitles.js';
 import { frameCount, frameTimeMs } from '../core/timing.js';
@@ -94,6 +95,7 @@ test('camera cuts change framing at defined frame', async () => {
 });
 
 test('managed paths refuse traversal', () => {
-  assert.throws(() => withinRoot('/tmp/studio', '../outside'), /outside managed root/);
-  assert.equal(withinRoot('/tmp/studio', 'episodes/EP0001'), '/tmp/studio/episodes/EP0001');
+  const root = resolve('workspace/test-managed-root');
+  assert.throws(() => withinRoot(root, '../outside'), /outside managed root/);
+  assert.equal(withinRoot(root, 'episodes/EP0001'), join(root, 'episodes', 'EP0001'));
 });

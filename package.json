@@ -20,7 +20,8 @@
     "mux:en": "node dist/cli.js mux examples/pilot.json --locale en-US --preset preview",
     "mux:es": "node dist/cli.js mux examples/pilot.json --locale es-ES --preset preview",
     "pipeline:preview": "node dist/cli.js pipeline examples/pilot.json --preset preview --translation-en examples/pilot.en-US.json",
-    "pipeline:final": "node dist/cli.js pipeline examples/pilot.json --preset final --translation-en examples/pilot.en-US.json"
+    "pipeline:final": "node dist/cli.js pipeline examples/pilot.json --preset final --translation-en examples/pilot.en-US.json",
+    "fixture:load": "node dist/tools/load-fixture.js"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

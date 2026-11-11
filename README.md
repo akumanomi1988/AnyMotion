@@ -39,6 +39,8 @@ node dist/cli.js jobs examples/pilot.json
 
 Los comandos `render` y `package` se niegan a sobrescribir artefactos distintos. `dub` y `mux` recuperan únicamente productos cuyos hashes y entradas coinciden. Para cambiar el guion, el doblaje o el estilo, crear una **nueva revisión o episodeId** y conservar los masters previos.
 
+Para validar escala **sin fingir que hemos generado una historia original**, ejecutar `npm run fixture:load` y `node dist/cli.js render workspace/loadtest-9min.json --preset preview`. Este fixture sintético de nueve minutos es solo una prueba de carga.
+
 ## Borradores de guion LLM (solo con proveedor configurado)
 
 Definir explícitamente las variables `ANYMOTION_LLM_ENDPOINT`, `ANYMOTION_LLM_MODEL`, `ANYMOTION_LLM_API_KEY` en el entorno. El programa no almacena ni registra claves. Las llamadas remotas usan HTTPS y pueden generar costes según el proveedor. **No se ejecutan durante `npm test` ni `pipeline:preview`**.
