@@ -169,3 +169,14 @@ node dist/cli.js editorial-analyze workspace/new-episode.json
 ```
 
 `generate-staged` requires `ANYMOTION_LLM_ENDPOINT`, `ANYMOTION_LLM_MODEL`, `ANYMOTION_LLM_API_KEY`. These are potentially billable requests. The bounded intermediate LLM responses are stored in content-hashed checkpoints under `workspace/drafts/<episodeId>/staged/` to resume without resending completed requests. The files are private, excluded from Git and tied to the precise brief and model. A crashed process may leave `.active.lock`; verify that no stage is active before removing a stale lock manually. Staged LLM generation has been tested with a **mock provider only**.
+
+
+## Multilingual YouTube Studio handoff
+
+When a full-resolution episode has been editorially approved and its thumbnail is hash-verified, generate an offline distribution package with the original-language MP4, one WAV per locale, individual/combined SRTs, thumbnail, localized metadata and a manual Studio upload guide:
+
+```bash
+node dist/cli.js youtube-kit examples/pilot.json --metadata examples/youtube-metadata.example.json
+```
+
+This requires **production-grade, approved voices**, not the included diagnostic fixture. The `productions/<episodeId>/studio-kit/<revision>/` directory is immutable, content-addressed, re-verifiable and separate from the approved master. It performs **no YouTube API calls**. Use the Studio interface for adding dubbed audio tracks where available; do not assume public API support for arbitrary dubbed tracks. A technical pass alone cannot create this kit without editorial signoff.

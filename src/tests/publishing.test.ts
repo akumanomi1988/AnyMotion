@@ -17,6 +17,8 @@ async function seed(root:string,voice='tts-http:approved-model-123'){
  const files:Record<string,string|Buffer>={
   [`locales/es-ES/final_final.mp4`]:Buffer.alloc(3600,65),
   [`locales/en-US/final_final.mp4`]:Buffer.alloc(3600,66),
+  [`locales/es-ES/full_audio.wav`]:Buffer.alloc(3000,45),
+  [`locales/en-US/full_audio.wav`]:Buffer.alloc(3000,46),
   [`locales/es-ES/dub-manifest.json`]:JSON.stringify({provider:voice,status:'LOCALIZED'}),
   [`locales/en-US/dub-manifest.json`]:JSON.stringify({provider:voice,status:'LOCALIZED'}),
   [`locales/es-ES/combined.srt`]:'1\n00:00:00,000 --> 00:00:01,000\nTest\n',
@@ -231,5 +233,28 @@ test('schedule refuses a remotely public video, without sending a status update'
   const transport:Transport=async(_,init)=>{if(init?.method==='PUT')updates++;return new Response(JSON.stringify({items:[{id:'abcdefghijk',status:{privacyStatus:'public'}}]}),{status:200});};
   await assert.rejects(()=>scheduleApprovedVideo({episode:ep,metadata,publishAt:'2026-11-19T13:00:00Z',accessToken:'token',confirm:`SCHEDULE:${ep.episodeId}:2026-11-19T13:00:00Z`,now:new Date('2026-11-11T12:00:00Z'),root,transport}),/not verified private/);
   assert.equal(updates,0);
+ }finally{await rm(root,{force:true,recursive:true});}
+});
+
+import {createStudioKit,verifyStudioKit} from '../publishing/kit.js';
+test('Studio export creates a localized, self-verifying kit after editorial approval',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'anymotion-studio-kit-'));
+ try{
+  await seed(root);
+  await assert.rejects(()=>createStudioKit({episode:ep,metadata,root}));
+  await approveEditorial(ep,review,root);
+  const folder=join(root,'productions',ep.episodeId,'thumbnails');await mkdir(folder,{recursive:true});
+  const png=Buffer.from('mock-thumb-for-studio-kit');
+  await writeFile(join(folder,'thumbnail.png'),png);
+  await writeFile(join(folder,'thumbnail.json'),JSON.stringify({status:'THUMBNAIL_READY',episodeId:ep.episodeId,sourceHash:sha(JSON.stringify(ep)),imageHash:sha(png)}));
+  const first=await createStudioKit({episode:ep,metadata,root});
+  assert.equal(first.manifest.status,'STUDIO_KIT_READY');
+  assert.ok(Object.keys(first.manifest.files).length>=10);
+  assert.match(await readFile(join(first.dir,'STUDIO_GUIDE.md'),'utf8'),/YouTube Studio/);
+  await verifyStudioKit(first.manifest,first.dir);
+  const again=await createStudioKit({episode:ep,metadata,root});
+  assert.equal(first.dir,again.dir);
+  await writeFile(join(first.dir,'audio_en-US.wav'),'tampered');
+  await assert.rejects(()=>createStudioKit({episode:ep,metadata,root}),/artifact changed/);
  }finally{await rm(root,{force:true,recursive:true});}
 });

@@ -74,3 +74,9 @@ Critical remaining work: Remotion versus Motion Canvas choice and licensing, act
 - Staged screenplay generation: 5–12 outline beats, scoped scene prompts, strict scene contract validation, one targeted repair per scene, final episode validation and global action/dialogue ID checks. Mocked model tests verify a complete 540-second structured episode and a successful targeted repair.
 - Content-addressed LLM-call checkpoint cache binds the exact prompt, model, brief and output hash, rejects corruption and supports local resume. No real provider was contacted; creative acceptance remains OPEN.
 - The existing `autopilot` still uses the legacy single-call story approach. `generate-staged` is an explicitly confirmed alternative until a live model benchmark justifies selecting it for production.
+
+
+## Additional implementation: multilingual distribution kit
+
+- Content-addressed, verified Studio handoff package: source-language video, localized full-dialogue WAV stems, accessibility SRTs, per-character diagnostic SRTs, approved thumbnail, metadata and a clear manual upload guide.
+- Requires full-resolution signed-off source; never publishes or obtains OAuth tokens. Unit tests cover approval, idempotent reuse and post-export corruption rejection. Multilingual Studio upload has **not** been validated with channel access.

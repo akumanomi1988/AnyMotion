@@ -30,6 +30,7 @@ import {scheduleApprovedVideo} from './publishing/schedule.js';
 import {analyzeEditorial} from './quality/editorial.js';
 import {createStagedStory} from './story/staged.js';
 import {startStagedProviderSession} from './story/checkpoints.js';
+import {createStudioKit} from './publishing/kit.js';
 
 const ROOT = resolve(process.cwd());
 const TEMP_ROOT = resolve(ROOT, 'workspace', 'temp');
@@ -194,7 +195,7 @@ async function main(): Promise<void> {
     console.log(`AnyMotion Studio (solo lectura) http://127.0.0.1:${service.port}`);
     return;
   }
-  if (!command || !['validate','subtitles','render','dub','mux','package','pipeline','jobs','generate','localize','editorial-check','editorial-approve','youtube-private','backup','backup-verify','restore','thumbnail','youtube-thumbnail','youtube-schedule','editorial-analyze','generate-staged','autopilot'].includes(command) || !file) {
+  if (!command || !['validate','subtitles','render','dub','mux','package','pipeline','jobs','generate','localize','editorial-check','editorial-approve','youtube-private','backup','backup-verify','restore','thumbnail','youtube-thumbnail','youtube-schedule','editorial-analyze','generate-staged','youtube-kit','autopilot'].includes(command) || !file) {
     console.log(`Usage:
   node dist/cli.js doctor
   node dist/cli.js studio
@@ -218,7 +219,8 @@ async function main(): Promise<void> {
   node dist/cli.js youtube-thumbnail examples/pilot.json --confirm UPLOAD_THUMBNAIL:EP0001
   node dist/cli.js youtube-schedule examples/pilot.json --metadata examples/youtube-metadata.example.json --publish-at 2027-01-01T18:00:00Z --confirm SCHEDULE:EP0001:2027-01-01T18:00:00Z
   node dist/cli.js editorial-analyze examples/pilot.json
-  node dist/cli.js generate-staged examples/story-brief.json --out workspace/new-episode.json --confirm GENERATE_STAGED:EP0002`);
+  node dist/cli.js generate-staged examples/story-brief.json --out workspace/new-episode.json --confirm GENERATE_STAGED:EP0002
+  node dist/cli.js youtube-kit examples/pilot.json --metadata examples/youtube-metadata.example.json`);
     process.exitCode = 2; return;
   }
   if(command==='localize'){
@@ -309,6 +311,13 @@ async function main(): Promise<void> {
     if(!o['--notes-file'])throw new Error('Editorial approval requires --notes-file');
     const decision=await approveEditorial(episode,{reviewer:o['--reviewer']??'',reviewNotes:await readFile(resolve(ROOT,o['--notes-file']),'utf8'),confirm:o['--confirm']??'',commercialRightsConfirmed:o['--rights-confirmed']==='yes'});
     console.log(`EDITORIAL_APPROVED ${decision.episodeId} for release ${decision.releaseSha256}`);return;
+  }
+  if(command==='youtube-kit'){
+    const opts=parseArgs(args,['--metadata']);
+    if(!opts['--metadata'])throw new Error('Studio publishing kit requires --metadata JSON');
+    const metadata=validateVideoMetadata(JSON.parse(await readFile(resolve(ROOT,opts['--metadata']),'utf8')) as unknown);
+    const result=await createStudioKit({episode,metadata});
+    console.log(`STUDIO_KIT_READY ${result.manifest.revision}: ${Object.keys(result.manifest.files).length} verified files at ${result.dir}`);return;
   }
   if(command==='youtube-schedule'){
     const opts=parseArgs(args,['--metadata','--publish-at','--confirm']);
