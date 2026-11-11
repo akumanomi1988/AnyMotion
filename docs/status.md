@@ -124,3 +124,14 @@ Critical remaining work: Remotion versus Motion Canvas choice and licensing, act
 - CLI `creative-check`, `creative-index` y `creative-approve`; aprobación no permitida si falta una entrega final verificable.
 - Prueba real de CLI, SQLite en disco y mini pipeline bilingüe de 78 segundos con voz sintética de prueba; la voz final y la calidad editorial siguen pendientes.
 - **No es una memoria de continuidad argumental** y la similitud léxica no garantiza originalidad ni monetización. No se ha contactado un proveedor LLM real.
+
+## Iteración 18 — Autopilot staged con presupuesto persistente
+
+- `autopilot` usa por defecto un esquema por escenas, con `--story-mode single` como compatibilidad explícita. `prepareEpisodeDrafts` registra el modo para impedir que una misma revisión cambie silenciosamente el algoritmo de generación.
+- El contexto de catálogo y los checkpoints de cada petición LLM son reanudables. Una prueba controlada generó 10 escenas, reparó únicamente la 4.ª tras un error contractual y recuperó el episodio sin repetir solicitudes al modelo.
+- `src/story/checkpoints.ts` persiste las reservas de número de llamadas y máximo de tokens de salida antes de hacer peticiones; un presupuesto agotado responde `LLM_BUDGET_BLOCKED`. No representa una factura real ni mide tokens de entrada.
+- La integración con un proveedor LLM comercial aún no se ha ejecutado: los tests utilizan un proveedor simulado, por lo que NO se considera F2 aprobado editorialmente.
+
+### Evidencia adicional F1/F3 full HD (iteración 18)
+
+En una ejecución local Linux con `ANYMOTION_TEST_VOICE=synthetic`, `pipeline:final` generó 2.340 fotogramas del maestro a 1920×1080/30 FPS. La primera invocación se interrumpió tras producir el máster y el audio español; el siguiente intento comprobó y recuperó los artefactos, completando el paquete bilingüe. FFprobe validó **dos MP4 H.264 + AAC de 78.000 s, 1920×1080 y 30/1 FPS** y `release_final.json`. Este resultado NO acredita voces expresivas, calidad artística, un vídeo de nueve minutos a 1080p ni render Windows. La interrupción dejó un archivo MP4 temporal huérfano, pendiente de una política de limpieza segura.

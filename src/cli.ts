@@ -222,7 +222,7 @@ async function main(): Promise<void> {
   node dist/cli.js editorial-check examples/pilot.json
   node dist/cli.js editorial-approve examples/pilot.json --reviewer Producer --notes-file review.txt --rights-confirmed yes --confirm APPROVE:EP0001
   node dist/cli.js youtube-private examples/pilot.json --metadata examples/youtube-metadata.example.json --confirm UPLOAD_PRIVATE:EP0001
-  node dist/cli.js autopilot examples/story-brief.json --confirm GENERATE_PREVIEW:EP0003
+  node dist/cli.js autopilot examples/story-brief.json --confirm GENERATE_PREVIEW:EP0002 [--story-mode staged|single]
   node dist/cli.js thumbnail examples/pilot.json --frame-ms 35000
   node dist/cli.js youtube-thumbnail examples/pilot.json --confirm UPLOAD_THUMBNAIL:EP0001
   node dist/cli.js youtube-schedule examples/pilot.json --metadata examples/youtube-metadata.example.json --publish-at 2027-01-01T18:00:00Z --confirm SCHEDULE:EP0001:2027-01-01T18:00:00Z
@@ -282,7 +282,9 @@ async function main(): Promise<void> {
     console.log(`LOCALIZATION_DRAFT ${result.episodeId}: ${Object.keys(result.lines).length} lines. Human review required.`);return;
   }
   if(command==='autopilot'){
-    const o=parseArgs(args,['--confirm']);
+    const o=parseArgs(args,['--confirm','--story-mode']);
+    const mode=o['--story-mode']??'staged';
+    if(mode!=='single'&&mode!=='staged')throw new Error('Autopilot --story-mode must be staged or single');
     const brief=validateStoryBrief(JSON.parse(await readFile(resolve(ROOT,file),'utf8')) as unknown);
     if(o['--confirm']!==`GENERATE_PREVIEW:${brief.episodeId}`)throw new Error('Autopilot requires exact episode confirmation before LLM calls');
     const model=process.env.ANYMOTION_LLM_MODEL,key=process.env.ANYMOTION_LLM_API_KEY,endpoint=process.env.ANYMOTION_LLM_ENDPOINT;
@@ -292,7 +294,7 @@ async function main(): Promise<void> {
     if(process.env.ANYMOTION_TEST_VOICE!=='synthetic'&&!configuredHttpTts())
       await runTool('espeak',['--version'],5000).catch(()=>{throw new Error('No configured HTTP TTS or eSpeak diagnostic tool; LLM calls were not made');});
     const provider=new OpenAICompatibleStoryProvider({model,apiKey:key,endpoint});
-    const draft=await prepareDraftsWithCreativeMemory(brief,provider,ROOT);
+    const draft=await prepareDraftsWithCreativeMemory(brief,provider,ROOT,mode);
     if(draft.assessment.repeatedPremiseRisk)console.warn(`CREATIVE_REVIEW_REQUIRED ${brief.episodeId}: high resemblance to ${draft.assessment.matches.map(m=>m.episodeId).join(', ')}`);
     console.log(`DRAFTS_READY ${brief.episodeId}; LLM calls this run: ${draft.llmCallsThisRun}; status EDITORIAL_PENDING`);
     const log=await executable(process.execPath,[resolve(ROOT,'dist','cli.js'),'pipeline',draft.episodePath,'--preset','preview','--translation-en',draft.localizationPath]);

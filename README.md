@@ -256,3 +256,17 @@ node dist/cli.js creative-approve examples/episode-0002-editorial-draft.json
 `creative-approve` **fails** without an actual full-resolution, commercially licensed, editorially approved release bound to the same episode hash. It is not a method to auto-approve an LLM draft. An indexed episode ID cannot be silently reused for a different story.
 
 The `autopilot` and `generate-staged` commands now save `workspace/drafts/<episodeId>/creative-context.json` before the first LLM call. That snapshot pins the current catalog context so that replays do not change paid prompts when new episodes are indexed. The generated draft is registered after validation, and possible similarities are reported for human review. Before first use in production, back up `workspace/creative-catalog.sqlite` along with the show bible, source contracts and episode manifests. `node:sqlite` is experimental under Node 22 and remains a production-qualification item.
+
+### Staged autopilot and bounded LLM costs
+
+`autopilot` now defaults to `--story-mode staged`: an outline, 5–12 separately validated scenes (with a single targeted repair per scene) and one en-US localization stage, each cached by its precise prompt and model. Explicit `--story-mode single` remains available for legacy experiments, but a persisted episode cannot be silently switched between modes. Checkpoints use a deterministic creative-memory snapshot from the moment generation begins.
+
+For staged generation, `workspace/drafts/<episodeId>/staged/budget-reservations.json` durably records the **maximum output tokens requested** and count of calls reserved before outbound requests. Default limits: 30 new model calls and 120,000 requested output tokens per episode. Successfully cached calls do not consume the budget again. A failed or interrupted outbound request conservatively consumes its reservation. This is **not a monetary cost meter**: input tokens, actual generated tokens, provider pricing and tax are additional costs that must be measured from provider billing. A limit hit returns `LLM_BUDGET_BLOCKED`; it never silently continues.
+
+```bash
+node dist/cli.js autopilot examples/story-brief.json --confirm GENERATE_PREVIEW:EP0002 --story-mode staged
+```
+
+Both the staged provider and the downstream dubbing remain unverified against a real paid LLM and commercial-grade expressive TTS. Automatic publishing is still prohibited.
+
+Full-HD technical validation (Linux, 11 November 2026): the 78-second pilot has been rendered at 1920×1080/30fps with one silent master and two localized H.264/AAC MP4s of exactly 78.000 seconds, verified by FFprobe and release packaging. The interrupted first attempt recovered on a subsequent pipeline invocation. This **does not certify final-quality acting, nine-minute final render throughput, commercial voices, Windows media, or YouTube access**.

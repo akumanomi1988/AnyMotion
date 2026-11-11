@@ -6,6 +6,7 @@ import {withinRoot} from '../core/filenames.js';
 import {validateStoryBrief,type StoryBrief,type StructuredStoryProvider} from '../story/llm.js';
 import {CreativeCatalog,draftFingerprint,type CatalogAssessment} from '../creative/catalog.js';
 import {prepareEpisodeDrafts,type PreparedDrafts} from './autopilot.js';
+import {startStagedProviderSession} from '../story/checkpoints.js';
 import {validateEpisode} from '../core/contracts.js';
 
 interface ContextSnapshot {schemaVersion:'1.0';episodeId:string;sourceHash:string;resolvedHash:string;brief:StoryBrief}
@@ -42,11 +43,14 @@ export async function pinnedCreativeBrief(input:unknown,root=resolve(process.cwd
  return resolved;
 }
 
-export async function prepareDraftsWithCreativeMemory(input:unknown,provider:StructuredStoryProvider,root=resolve(process.cwd())):
+export async function prepareDraftsWithCreativeMemory(input:unknown,provider:StructuredStoryProvider,root=resolve(process.cwd()),mode:'single'|'staged'='single'):
  Promise<PreparedDrafts & {assessment:CatalogAssessment}> {
  const original=validateStoryBrief(input);
  const pinned=await pinnedCreativeBrief(original,root);
- const drafts=await prepareEpisodeDrafts(pinned,provider,root);
+ const session=mode==='staged'?await startStagedProviderSession(pinned,provider,root):null;
+ let drafts:PreparedDrafts;
+ try{drafts=await prepareEpisodeDrafts(pinned,session?.provider??provider,root,mode);}
+ finally{await session?.close();}
  const episode=validateEpisode(JSON.parse(await readFile(drafts.episodePath,'utf8')) as unknown);
  const catalog=new CreativeCatalog(join(resolve(root),'workspace','creative-catalog.sqlite'));
  try {

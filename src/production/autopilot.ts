@@ -3,21 +3,22 @@ import {open,readFile,writeFile,mkdir,rm,stat} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {join,resolve} from 'node:path';
 import {withinRoot} from '../core/filenames.js';
-import {validateGeneratedEpisode,validateStoryBrief,createStory,type StoryBrief,type StructuredStoryProvider} from '../story/llm.js';
+import {validateGeneratedEpisode,validateStoryBrief,createStory,type StoryBrief,type StructuredStoryProvider,type StoryResult} from '../story/llm.js';
+import {createStagedStory} from '../story/staged.js';
 import {createLocalizationDraft} from '../story/localizer.js';
 import {validateLocalization} from '../audio/dubbing.js';
 import type {Episode} from '../core/contracts.js';
 
 const digest=(s:string)=>createHash('sha256').update(s).digest('hex');
 const exists=(path:string)=>stat(path).then(()=>true,(e:NodeJS.ErrnoException)=>e.code==='ENOENT'?false:Promise.reject(e));
-interface DraftRequest {schemaVersion:'1.0';episodeId:string;briefHash:string;modelId:string}
+interface DraftRequest {schemaVersion:'1.0';episodeId:string;briefHash:string;modelId:string;generationMode?:'single'|'staged'}
 interface DraftReceipt {schemaVersion:'1.0';status:'DRAFTS_READY_EDITORIAL_PENDING';episodeId:string;briefHash:string;episodeHash:string;localizationHash:string;modelId:string;warnings:string[];completedAt:string}
 export interface PreparedDrafts {episodePath:string;localizationPath:string;receipt:DraftReceipt;llmCallsThisRun:number}
 
 function parseJson(value:string):unknown{return JSON.parse(value) as unknown;}
 
 /** Neither completed drafts nor media files are overwritten. No secret value is persisted. */
-export async function prepareEpisodeDrafts(input:unknown,provider:StructuredStoryProvider,root=resolve(process.cwd())):Promise<PreparedDrafts>{
+export async function prepareEpisodeDrafts(input:unknown,provider:StructuredStoryProvider,root=resolve(process.cwd()),generationMode:'single'|'staged'='single'):Promise<PreparedDrafts>{
  const brief=validateStoryBrief(input);
  const folder=withinRoot(resolve(root),join('workspace','drafts',brief.episodeId));
  await mkdir(folder,{recursive:true});
@@ -30,10 +31,12 @@ export async function prepareEpisodeDrafts(input:unknown,provider:StructuredStor
   const episodePath=join(folder,'episode.json');
   const localizationPath=join(folder,'en-US.json');
   const receiptFile=join(folder,'drafts-ready.json');
-  const expected:DraftRequest={schemaVersion:'1.0',episodeId:brief.episodeId,briefHash,modelId:provider.modelId};
+  const expected:DraftRequest={schemaVersion:'1.0',episodeId:brief.episodeId,briefHash,modelId:provider.modelId,generationMode};
   if(await exists(requestFile)){
    const previous=parseJson(await readFile(requestFile,'utf8')) as DraftRequest;
-   if(JSON.stringify(previous)!==JSON.stringify(expected))throw new Error('Existing draft request belongs to another brief or model revision');
+   const priorMode=previous.generationMode??'single';
+   if(priorMode!==generationMode||previous.schemaVersion!==expected.schemaVersion||previous.episodeId!==expected.episodeId||previous.briefHash!==expected.briefHash||previous.modelId!==expected.modelId)
+    throw new Error('Existing draft request belongs to another brief, model or generator revision');
   }else{
    if(await exists(episodePath)||await exists(localizationPath)||await exists(receiptFile))throw new Error('Draft files exist without their request manifest');
    await writeFile(requestFile,JSON.stringify(expected,null,2)+'\n',{flag:'wx'});
@@ -44,7 +47,9 @@ export async function prepareEpisodeDrafts(input:unknown,provider:StructuredStor
    episode=validateGeneratedEpisode(parseJson(await readFile(episodePath,'utf8')),brief);
   }else{
    llmCallsThisRun++;
-   const draft=await createStory(brief,provider);
+   const draft:StoryResult=generationMode==='staged'?
+     await createStagedStory(brief,provider).then(r=>({episode:r.episode,warnings:r.warnings,model:r.model})):
+     await createStory(brief,provider);
    episode=draft.episode;warnings=draft.warnings;
    await writeFile(episodePath,JSON.stringify(episode,null,2)+'\n',{flag:'wx'});
   }
