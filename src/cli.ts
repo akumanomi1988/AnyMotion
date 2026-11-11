@@ -20,6 +20,7 @@ import { verifyMaster } from './production/master.js';
 import { approveEditorial, verifyEditorialApproval, verifiedRelease } from './publishing/approval.js';
 import { uploadPrivateVideo, validateVideoMetadata } from './publishing/youtube.js';
 import {acquireYouTubeAccessToken,credentialsFromEnvironment} from './publishing/oauth.js';
+import {makeThumbnail} from './production/thumbnail.js';
 import {backupEpisode,restoreEpisodeBackup,verifyEpisodeBackup} from './production/backup.js';
 
 const ROOT = resolve(process.cwd());
@@ -179,7 +180,7 @@ async function executeStage<T>(db: ProductionJobStore, spec:JobSpec, work:()=>Pr
 async function main(): Promise<void> {
   const [command, file, ...args] = process.argv.slice(2);
   if (command === 'doctor') return doctor();
-  if (!command || !['validate','subtitles','render','dub','mux','package','pipeline','jobs','generate','localize','editorial-check','editorial-approve','youtube-private','backup','backup-verify','restore'].includes(command) || !file) {
+  if (!command || !['validate','subtitles','render','dub','mux','package','pipeline','jobs','generate','localize','editorial-check','editorial-approve','youtube-private','backup','backup-verify','restore','thumbnail'].includes(command) || !file) {
     console.log(`Usage:
   node dist/cli.js doctor
   node dist/cli.js validate examples/pilot.json
@@ -196,7 +197,8 @@ async function main(): Promise<void> {
   node dist/cli.js restore examples/pilot.json --from /external/archive
   node dist/cli.js editorial-check examples/pilot.json
   node dist/cli.js editorial-approve examples/pilot.json --reviewer Producer --notes-file review.txt --rights-confirmed yes --confirm APPROVE:EP0001
-  node dist/cli.js youtube-private examples/pilot.json --metadata examples/youtube-metadata.example.json --confirm UPLOAD_PRIVATE:EP0001`);
+  node dist/cli.js youtube-private examples/pilot.json --metadata examples/youtube-metadata.example.json --confirm UPLOAD_PRIVATE:EP0001
+  node dist/cli.js thumbnail examples/pilot.json --frame-ms 35000`);
     process.exitCode = 2; return;
   }
   if(command==='localize'){
@@ -223,6 +225,12 @@ async function main(): Promise<void> {
       command==='backup-verify'?await verifyEpisodeBackup(episode,archive):await restoreEpisodeBackup(episode,archive);
     console.log(`${command.toUpperCase()} ${result.episodeId}: ${Object.keys(result.files).length} verified files; revision=${result.episodeSha256}`);
     return;
+  }
+  if(command==='thumbnail'){
+    const o=parseArgs(args,['--frame-ms']);
+    if(!o['--frame-ms']||!/^[0-9]+$/.test(o['--frame-ms']))throw new Error('Thumbnail requires integer --frame-ms');
+    const result=await makeThumbnail(episode,Number(o['--frame-ms']));
+    console.log(`THUMBNAIL_READY ${result.episodeId}: frame ${result.frameMs}ms; SHA-256 ${result.imageHash}`);return;
   }
   if(command==='editorial-check'){
     const release=await verifiedRelease(episode,'final');

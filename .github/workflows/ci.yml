@@ -25,7 +25,7 @@ jobs:
       - run: npm test
 
   media-integration:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 12
     env:
       ANYMOTION_TEST_VOICE: synthetic
@@ -34,6 +34,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Ensure media dependencies are available
+        run: |
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends ffmpeg
+          fi
+          command -v ffmpeg && command -v ffprobe
       - name: Use deterministic synthetic voice in CI only
         run: echo "CI uses a synthetic audio fixture, never commercial speech synthesis"
       - run: npm install --no-audit --no-fund

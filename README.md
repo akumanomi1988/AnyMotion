@@ -161,3 +161,11 @@ node dist/cli.js youtube-private examples/my-approved-episode.json \
 ```
 
 The uploader is tested with an HTTP mock only. It has **not** been run against a real YouTube channel, and multi-language audio uploads require separate verification in YouTube Studio.
+
+### Thumbnail from the same visual identity
+
+```bash
+node dist/cli.js thumbnail examples/pilot.json --frame-ms 35000
+```
+
+Creates a deterministic 1280×720 PNG and its checksum manifest under `productions/<episodeId>/thumbnails/`. It is a visual draft; editorial review of composition, typography and localizations remains required. This command does **not** upload a YouTube thumbnail.
