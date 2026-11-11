@@ -80,3 +80,10 @@ Critical remaining work: Remotion versus Motion Canvas choice and licensing, act
 
 - Content-addressed, verified Studio handoff package: source-language video, localized full-dialogue WAV stems, accessibility SRTs, per-character diagnostic SRTs, approved thumbnail, metadata and a clear manual upload guide.
 - Requires full-resolution signed-off source; never publishes or obtains OAuth tokens. Unit tests cover approval, idempotent reuse and post-export corruption rejection. Multilingual Studio upload has **not** been validated with channel access.
+
+
+## Nine-minute original editorial fixture
+
+- Added independently authored creative draft EP0002 ("El tratado de los veintidós grados") and en-US culturally localized draft. 10 scenes, 90 lines, 540 seconds, 40 camera changes. This is not a generated episode.
+- Actual Linux FFmpeg preview validation: 6,480 frames at 640×360/12 fps, full 540.000 s H.264 picture; 90 eSpeak diagnostic speech clips per locale; two final H.264/AAC preview MP4s with the same 540.000 s duration; 202 content-hashed release artifacts and isolated SRT per character.
+- Review status remains EDITORIAL_PENDING. No natural voice, original art approval, actual cloud LLM, source TTS pipeline on Windows or commercial publish validation is implied.
