@@ -153,3 +153,8 @@ CI de la primera iteración Sharp: los contratos Ubuntu finalizaron PASS, mientr
 - En un workspace aislado se generó de nuevo el episodio de 78 segundos (640×360/12 FPS, vídeo es/en H.264/AAC) y un benchmark real de **24 segundos, 1920×1080, 30 FPS, H.264**, 720 frames, con FFprobe: 24.000 s, 17.5 s de trabajo medido, espacio temporal mínimo.
 - `examples/benchmark-24.json` y su prueba de contrato reproducen el benchmark. CI Ubuntu exige ahora la conversión de este fragmento Full HD, además de toda la previsualización bilingüe.
 - La extrapolación del rendimiento a 9 minutos en 1080p y la compatibilidad FFmpeg Windows siguen pendientes: no tratarlas como validadas por un clip corto.
+
+
+#### Windows media validation gate — iteration 21
+
+The required `media-windows` CI job performs actual SVG → Sharp → H.264 rendering of the 78-second preview on `windows-latest`. It checks codec, resolution, frame rate and duration via FFprobe. This gate remains **UNVERIFIED** until the CI result is inspected; Windows commercial production with final TTS and 8–10-minute render still requires a dedicated benchmark.

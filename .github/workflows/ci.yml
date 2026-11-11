@@ -79,3 +79,42 @@ jobs:
           ffprobe -v error -show_entries stream=width,height,r_frame_rate -of default=nw=1:nk=1 "$file" | grep -x '1080' >/dev/null
           ffprobe -v error -show_entries stream=r_frame_rate -of default=nw=1:nk=1 "$file" | grep -x '30/1' >/dev/null
           ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$file" | grep -x '24.000000' >/dev/null
+
+  media-windows:
+    name: media-smoke (windows-latest, required)
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Require Windows FFmpeg and Sharp
+        shell: pwsh
+        run: |
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
+            if (-not (Get-Command choco -ErrorAction SilentlyContinue)) { throw 'Neither FFmpeg nor Chocolatey is available' }
+            choco install ffmpeg -y --no-progress
+            if ($LASTEXITCODE -ne 0) { throw 'Chocolatey failed to install FFmpeg' }
+            $env:Path += ';C:\ProgramData\chocolatey\bin'
+          }
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) { throw 'FFmpeg executable is unavailable' }
+          if (-not (Get-Command ffprobe -ErrorAction SilentlyContinue)) { throw 'FFprobe executable is unavailable' }
+          $encoders = (& ffmpeg -hide_banner -encoders 2>&1 | Out-String)
+          if ($encoders -notmatch 'libx264') { throw 'Windows FFmpeg lacks H.264 libx264 encoder' }
+          node -e "const sharp=require('sharp');if(!sharp.versions.vips)process.exit(1)"
+          if ($LASTEXITCODE -ne 0) { throw 'Native Sharp rasterizer cannot load on Windows' }
+      - name: Render Windows SVG/Sharp/FFmpeg preview
+        shell: pwsh
+        run: |
+          npm run render:preview
+          if ($LASTEXITCODE -ne 0) { throw 'Windows video renderer failed' }
+          $video = 'productions/EP0001/preview/silent.mp4'
+          if (-not (Test-Path $video)) { throw 'Video file was not produced' }
+          $probe = (& ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height,r_frame_rate -of json $video | ConvertFrom-Json)
+          if ($LASTEXITCODE -ne 0 -or $probe.streams.Count -ne 1) { throw 'FFprobe did not find exactly one video stream' }
+          $v = $probe.streams[0]
+          if ($v.codec_name -ne 'h264' -or $v.width -ne 640 -or $v.height -ne 360 -or $v.r_frame_rate -ne '12/1') { throw 'Unexpected Windows video codec, resolution or FPS' }
+          $duration = (& ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 $video).Trim()
+          if ($LASTEXITCODE -ne 0 -or [math]::Abs([double]::Parse($duration,[cultureinfo]::InvariantCulture)-78.0) -gt 0.05) { throw 'Unexpected Windows video duration' }

@@ -288,3 +288,8 @@ npm run benchmark:fullhd
 ```
 
 The versioned `examples/benchmark-24.json` is a **24-second diagnostic**, containing the two leads, dialogue, camera cuts and gestures. The isolated Linux render produced 720 frames and H.264 at 1920×1080, 30fps, exactly 24.000 seconds in 17.5 seconds elapsed, with no leftover PNG temp directory. CI now requires this benchmark in addition to the bilingual preview. It is **not** a full nine-minute 1080p benchmark, a Windows media result or evidence of publishable art.
+
+
+### Windows native media CI gate (F1)
+
+In addition to Node contract tests on Windows, the workflow now **requires** a native Windows render using Sharp SVG rasterization and FFmpeg H.264. A missing encoder or binary fails the job instead of silently skipping media coverage. This does not replace an on-device Windows test with the creator’s GPU, installed fonts, chosen voices and production-length workload.
