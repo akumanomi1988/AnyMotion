@@ -1,58 +1,76 @@
-# AnyMotion
+# AnyMotion · Sitcom AI Studio
 
-**Status: F0/F1 technical prototype, not a finished production studio.** A deterministic, dependency-light 2D vector renderer for original sitcom episodes. The creative brief is *Sitcom AI Studio*: original standalone 8–10 minute episodes, recurring characters and sets, individual SRTs per speaker, dubbing without rerendering the picture, and deliberate human approval before publication.
+**Estado real:** prototipo audiovisual bilingüe ejecutable + registro SQLite de trabajos + adaptador opcional de guiones LLM. **No es un estudio de producción comercial terminado.** La creatividad, las voces, los personajes y las licencias deberán pasar revisión editorial antes de publicar.
 
-The current prototype deliberately generates **no AI scripts, no synthesized speech, no YouTube uploads, and makes no paid API calls**. These capabilities belong to later milestones. Character art and names (Vera and Leo) are provisional, not an approved show identity.
+## Alcance implementado
 
-## Requirements
+- Contratos validados, cronología absoluta en milisegundos, IDs de réplica estables, y SRT por personaje y combinado.
+- Renderer SVG/FFmpeg reproducible con **dos personajes** y **tres fondos domésticos** (salón, cocina, dormitorio); cámara, gestos y expresiones.
+- Render maestro H.264 sin audio, previews y manifiesto con SHA-256 y FFprobe.
+- Doblaje real por réplica con voz **eSpeak solo para diagnóstico**, voces distintas, `speech-fit-report`, adaptación en-US mediante texto explícito, rechazo de frases que no caben y montaje de vídeo sin rerenderizar planos.
+- Persistencia SQLite local de trabajos, claims atómicos, leases y reintentos limitados. La API integrada `node:sqlite` está **marcada experimental en Node 22**: evaluar sustitución por un driver estable antes de cargas de producción críticas.
+- Pipeline de prueba idempotente con verificación de integridad y paquete etiquetado `TECHNICAL_PASS_EDITORIAL_PENDING`. Prohibida la publicación automática.
+- Adaptador de LLM **opcional** de API compatible con OpenAI; solo genera borradores JSON que pasan validación estricta y barreras de duración. No hay garantía automática de comicidad, originalidad ni calidad editorial.
 
-- Node.js **22+**, npm (to install build-time TypeScript)
-- FFmpeg and FFprobe on `PATH`, with `librsvg` decoder and `libx264` encoder
-- Windows/Linux/macOS with a compatible FFmpeg build (Windows availability of `librsvg` must be checked; not all builds include it)
+## Instalación
 
-## Run
+- Node.js **22+**, npm, FFmpeg, FFprobe y decoder `librsvg` + encoder `libx264`.
+- **eSpeak** en PATH para pruebas de voz. La voz final requerirá un proveedor expresivo validado para es-ES/en-US (Kokoro/Piper/API son candidatos, **no integrados**).
+- Windows, Linux o macOS: comprobar FFmpeg, eSpeak y permisos de escritura con `doctor`.
 
 ```bash
 npm install
 npm test
 npm run doctor
-npm run render:preview
-# When ready for full HD output:
-npm run render:final
+npm run pipeline:preview
 ```
 
-The preview generates `productions/EP0001/preview/silent.mp4` (78 seconds, 640×360, 12 FPS), with `vera.srt`, `leo.srt`, `combined.srt`, `manifest.json` and `quality-report.json` alongside their managed production paths. Full render generates 1920×1080 at 30 FPS. The video is **silent by design**: speech is indicated through deterministic facial animation, while real speech timing and multilingual audio integration are later deliverables.
+El pipeline crea, bajo `productions/EP0001/`, el vídeo maestro **silencioso de 78 s**, `locales/es-ES/` y `locales/en-US/` con `vera.srt`, `leo.srt`, `combined.srt`, `dialogue.wav`, `full_audio.wav`, `final_preview.mp4`, informes y hashes, más `release_preview.json`. Los medios y la base `workspace/jobs.sqlite` no se suben a Git.
 
-`npm run subtitles` exports separate original-language SRTs without rendering. `node dist/cli.js validate examples/pilot.json` only validates the structured contract. `npm run doctor` verifies available local tools.
+```bash
+npm run render:preview
+npm run dub:es
+npm run dub:en
+npm run mux:es
+npm run mux:en
+node dist/cli.js package examples/pilot.json --preset preview
+node dist/cli.js jobs examples/pilot.json
+```
 
-The CLI refuses to overwrite an existing validated MP4. Move/archive the old revision before another render. The generated `workspace/` and `productions/` folders are excluded from Git.
+Los comandos `render` y `package` se niegan a sobrescribir artefactos distintos. `dub` y `mux` recuperan únicamente productos cuyos hashes y entradas coinciden. Para cambiar el guion, el doblaje o el estilo, crear una **nueva revisión o episodeId** y conservar los masters previos.
 
-## What exists today
+## Borradores de guion LLM (solo con proveedor configurado)
 
-- Strict `Episode`/`Scene`/`DialogueLine`/`CameraCue`/`Action` schemas with runtime validation and stable IDs
-- Integer millisecond timeline with frame-alignment checks; camera cuts, expressions, gestures, idle motion, blink and mouth movement
-- Original SVG vector characters and a reusable living-room set, rendered to H.264 using FFmpeg
-- SRT per character plus combined SRT preserving absolute timestamps and declared cross-speaker overlaps
-- SHA-256 artifact manifest and FFprobe-based technical checks
-- Automated tests for contracts, security boundaries, timing, subtitles and deterministic output
-- Example original 78-second script with two scenes and multiple framings
+Definir explícitamente las variables `ANYMOTION_LLM_ENDPOINT`, `ANYMOTION_LLM_MODEL`, `ANYMOTION_LLM_API_KEY` en el entorno. El programa no almacena ni registra claves. Las llamadas remotas usan HTTPS y pueden generar costes según el proveedor. **No se ejecutan durante `npm test` ni `pipeline:preview`**.
 
-## What is not implemented
+```bash
+node dist/cli.js generate examples/story-brief.json --out examples/EP0002.generated.json
+```
 
-LLM orchestration, episode generation, voice timing from actual TTS, emotion-dependent speech, localized speech fitting, dubbing, editable timelines, scalable job queue, editorial approval console, browser GUI, rights registry, or publishing. No technical PASS implies editorial approval. The initial SVG/FFmpeg renderer is a **reversible proof of concept**, not the final selection of Remotion versus Motion Canvas.
+El resultado se valida como episodio de **8–10 minutos** y permanece en estado **DRAFT**. Su historia, expresividad y adaptación deben aprobarse manualmente. El guion ficticio de EP0001 y la localización en inglés son *fixtures*, no evidencias de creatividad automática.
 
-## Source structure
+## Arquitectura
 
 ```text
 src/
-  core/         # Renderer-independent contracts, time, subtitles and safe paths
-  renderer/     # Deterministic SVG frame generator
-  cli.ts        # Preflight, rendering, FFprobe verification and artifacts
-  tests/        # Node built-in tests
-examples/       # Story and scene fixtures (not model prompts)
-docs/decisions/ # Provisional architectural decisions
+  core/          contratos, timeline, rutas seguras, exportación SRT
+  renderer/      SVG puro: personajes, escenarios, cámara y gestos
+  audio/         doblaje temporal y mux a MP4
+  production/    trabajos SQLite y packaging verificado
+  story/         proveedor LLM compatible y QA estructural del borrador
+  tests/         validaciones y regresiones
+examples/        fixtures originales de 78s, traducción en-US y brief LLM
+productions/     artefactos versionados en disco (ignorados en Git)
+workspace/       SQLite y temporales (ignorados en Git)
 ```
 
-## Next gate
+## Lo que falta para la visión comercial
 
-Compare a 20–30s section of this sequence against Remotion and Motion Canvas with the same visual requirements and hardware, validate licenses on the intended commercial use, and select one production renderer. The next vertical slice must add measured source-language voice **before** freezing the master timeline. Do not begin mass-generating episodes or autopublishing.
+1. Aprobar arte final, comparar Remotion/Motion Canvas con el renderer actual y decidir motor definitivo con licencias comprobadas.
+2. Generar voces **antes** de congelar el timeline en producciones nuevas; integrar TTS expresivo, perfil versionado por personaje e idioma, mezcla SFX/música y QA de escucha.
+3. Validar que un episodio de **8–10 min generado por LLM** es realmente original, gracioso y animado, no relleno narrativo. El generador existe, pero no está validado contra un proveedor real en este entorno.
+4. Implementar compositor/editor de timeline, revisión editorial, cola autónoma programada, backups restaurables y métricas de coste.
+5. Conectar el adaptador oficial de YouTube con OAuth, permisos efectivos, aprobación humana y subida privada de prueba, sin hacer suposiciones sobre APIs de pistas multilingües.
+6. Producir seis episodios distintos y evaluar métricas reales antes de aumentar la cadencia.
+
+No considerar `TECHNICAL_PASS` equivalente a `EDITORIAL_APPROVED`, ni un episodio generado automáticamente equivalente a un episodio publicable.

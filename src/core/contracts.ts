@@ -17,7 +17,7 @@ export interface DialogueLine {
 export interface CameraCue { atMs: number; shot: CameraShot }
 export interface EpisodeScene {
   sceneId: string;
-  setId: 'living-room';
+  setId: 'living-room' | 'kitchen' | 'bedroom';
   startMs: number;
   endMs: number;
   camera: CameraCue[];
@@ -75,7 +75,7 @@ export function validateEpisode(value: unknown): Episode {
     keys(raw, ['sceneId', 'setId', 'startMs', 'endMs', 'camera', 'actions', 'dialogue'], label, issues);
     if (!validId(raw.sceneId) || sceneIds.has(raw.sceneId)) issues.push(`${label}.sceneId is invalid or duplicate`);
     else sceneIds.add(raw.sceneId);
-    if (raw.setId !== 'living-room') issues.push(`${label}.setId is not registered`);
+    if (!['living-room','kitchen','bedroom'].includes(raw.setId as string)) issues.push(`${label}.setId is not registered`);
     if (!validTime(raw.startMs) || raw.startMs !== expectedStart) issues.push(`${label}.startMs must equal ${expectedStart}`);
     if (!validTime(raw.endMs) || !validTime(raw.startMs) || raw.endMs <= raw.startMs || (validTime(value.durationMs) && raw.endMs > value.durationMs)) issues.push(`${label}.endMs outside valid scene interval`);
     if (validTime(raw.endMs)) expectedStart = raw.endMs;

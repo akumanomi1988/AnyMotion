@@ -4,15 +4,23 @@
   "private": true,
   "type": "module",
   "description": "Deterministic vector animation studio for original animated sitcoms",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "npm run build && node --test dist/tests/contracts.test.js",
+    "test": "npm run build && node --test dist/tests/*.test.js",
     "doctor": "node dist/cli.js doctor",
     "render:preview": "node dist/cli.js render examples/pilot.json --preset preview",
     "render:final": "node dist/cli.js render examples/pilot.json --preset final",
-    "subtitles": "node dist/cli.js subtitles examples/pilot.json"
+    "subtitles": "node dist/cli.js subtitles examples/pilot.json",
+    "dub:en": "node dist/cli.js dub examples/pilot.json --locale en-US --translation examples/pilot.en-US.json",
+    "dub:es": "node dist/cli.js dub examples/pilot.json --locale es-ES",
+    "mux:en": "node dist/cli.js mux examples/pilot.json --locale en-US --preset preview",
+    "mux:es": "node dist/cli.js mux examples/pilot.json --locale es-ES --preset preview",
+    "pipeline:preview": "node dist/cli.js pipeline examples/pilot.json --preset preview --translation-en examples/pilot.en-US.json",
+    "pipeline:final": "node dist/cli.js pipeline examples/pilot.json --preset final --translation-en examples/pilot.en-US.json"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

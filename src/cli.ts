@@ -10,6 +10,10 @@ import { createSubtitles } from './core/subtitles.js';
 import { frameCount } from './core/timing.js';
 import { withinRoot } from './core/filenames.js';
 import { renderSvgFrame } from './renderer/scene.js';
+import { dubEpisode, muxDubbedVideo, sourceLocalization, type Locale } from './audio/dubbing.js';
+import { packageEpisode } from './production/package.js';
+import { ProductionJobStore, type JobSpec } from './production/jobs.js';
+import { generateDraftFile } from './story/llm.js';
 
 const ROOT = resolve(process.cwd());
 const TEMP_ROOT = resolve(ROOT, 'workspace', 'temp');
@@ -110,7 +114,7 @@ async function render(episode: Episode, preset: keyof typeof presets): Promise<v
     const manifest = {
       schemaVersion: '1.0', episodeId: episode.episodeId, status: 'MASTER_RENDERED', editorialApproved: false,
       preset, renderer: 'svg-ffmpeg-poc', frames: n, fps: config.fps, canvas: { width: config.width, height: config.height },
-      durationMs: episode.durationMs, renderElapsedMs: elapsedMs,
+      durationMs: episode.durationMs, sourceHash: createHash('sha256').update(JSON.stringify(episode)).digest('hex'), renderElapsedMs: elapsedMs,
       artifacts: [{ path: output.slice(ROOT.length + 1), sha256: await sha256(output) }, ...(await Promise.all(subtitles.map(async file => ({ path: file.slice(ROOT.length + 1), sha256: await sha256(file) }))))],
     };
     await writeFile(join(outputDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
@@ -124,18 +128,118 @@ async function render(episode: Episode, preset: keyof typeof presets): Promise<v
   }
 }
 
+function parseArgs(args: string[], valid: string[]): Record<string,string> {
+  if(args.length%2!==0)throw new Error('Option flags require values');
+  const options:Record<string,string>={};
+  for(let i=0;i<args.length;i+=2){
+    const name=args[i]!,value=args[i+1]!;
+    if(!valid.includes(name)||name in options)throw new Error(`Unknown/duplicate option: ${name}`);
+    options[name]=value;
+  }
+  return options;
+}
+
+async function localizationFile(episode: Episode,locale: Locale,filename?:string):Promise<unknown>{
+  if(locale==='es-ES'){
+    if(filename)throw new Error('Do not supply a translation for the source locale');
+    return sourceLocalization(episode);
+  }
+  if(!filename)throw new Error('English requires --translation with manually reviewed localized lines');
+  return JSON.parse(await readFile(resolve(ROOT,filename),'utf8')) as unknown;
+}
+
+async function executeStage<T>(db: ProductionJobStore, spec:JobSpec, work:()=>Promise<T>, outputHash:(value:T)=>Promise<string>):Promise<T>{
+  const claimed=db.claim(spec,30*60_000);
+  if(!claimed){
+    const existing=db.get(spec);
+    if(existing?.status!=='SUCCEEDED')throw new Error(`Stage ${spec.stage}/${spec.locale??''} is locked or blocked: ${existing?.status}`);
+    // Re-run only idempotent verification paths, not the rendering itself.
+    return work();
+  }
+  try{
+    const result=await work();
+    db.succeed(spec,claimed.owner,await outputHash(result));
+    return result;
+  }catch(error){db.fail(spec,claimed.owner,error instanceof Error?error.message:String(error),false);throw error;}
+}
+
 async function main(): Promise<void> {
   const [command, file, ...args] = process.argv.slice(2);
   if (command === 'doctor') return doctor();
-  if (!command || !['validate', 'subtitles', 'render'].includes(command) || !file) {
-    console.log('Usage:\n  node dist/cli.js doctor\n  node dist/cli.js validate examples/pilot.json\n  node dist/cli.js subtitles examples/pilot.json\n  node dist/cli.js render examples/pilot.json --preset preview|final');
+  if (!command || !['validate','subtitles','render','dub','mux','package','pipeline','jobs','generate'].includes(command) || !file) {
+    console.log(`Usage:
+  node dist/cli.js doctor
+  node dist/cli.js validate examples/pilot.json
+  node dist/cli.js subtitles examples/pilot.json
+  node dist/cli.js render examples/pilot.json --preset preview|final
+  node dist/cli.js dub examples/pilot.json --locale es-ES|en-US [--translation examples/pilot.en-US.json]
+  node dist/cli.js mux examples/pilot.json --locale es-ES|en-US --preset preview|final
+  node dist/cli.js pipeline examples/pilot.json --preset preview|final --translation-en examples/pilot.en-US.json
+  node dist/cli.js jobs examples/pilot.json
+  node dist/cli.js generate examples/story-brief.json --out examples/new-episode.json`);
     process.exitCode = 2; return;
+  }
+  if(command==='generate') {
+    const o=parseArgs(args,['--out']);
+    if(!o['--out'])throw new Error('generate requires --out path');
+    const result=await generateDraftFile(file,o['--out']);
+    console.log(`DRAFT ${result.episode.episodeId}; model=${result.model}; warnings=${result.warnings.join(';')||'none'}. Human editorial approval required.`);return;
   }
   const episode = await loadEpisode(file);
   if (command === 'validate') { console.log(`PASS ${episode.episodeId}: ${episode.scenes.length} scenes, ${episode.durationMs}ms`); return; }
   if (command === 'subtitles') { const files = await exportSrt(episode); console.log(files.join('\n')); return; }
-  if (args.length !== 2 || args[0] !== '--preset' || !['preview', 'final'].includes(args[1] ?? '')) throw new Error('Render requires --preset preview|final');
-  await render(episode, args[1] as keyof typeof presets);
+  if(command==='jobs'){
+    const db=new ProductionJobStore(join(ROOT,'workspace','jobs.sqlite'));
+    try {console.log(JSON.stringify(db.list(episode.episodeId),null,2));}finally{db.close();}
+    return;
+  }
+  if(command==='render'){
+    if (args.length!==2 || args[0]!=='--preset' || !['preview','final'].includes(args[1]??'')) throw new Error('Render requires --preset preview|final');
+    return render(episode,args[1] as keyof typeof presets);
+  }
+  if(command==='dub'){
+    const o=parseArgs(args,['--locale','--translation']);
+    if(o['--locale']!=='es-ES'&&o['--locale']!=='en-US')throw new Error('dub needs --locale es-ES|en-US');
+    const m=await dubEpisode(episode,await localizationFile(episode,o['--locale'],o['--translation']),o['--locale']);
+    console.log(`PASS ${m.episodeId} ${m.locale}: ${m.clips.length} speech clips; provider=${m.provider}`); return;
+  }
+  if(command==='mux'){
+    const o=parseArgs(args,['--locale','--preset']);
+    if(o['--locale']!=='es-ES'&&o['--locale']!=='en-US')throw new Error('mux needs --locale es-ES|en-US');
+    if(o['--preset']!=='preview'&&o['--preset']!=='final')throw new Error('mux needs --preset preview|final');
+    console.log('PASS '+await muxDubbedVideo(episode,o['--locale'],o['--preset']));return;
+  }
+  if(command==='package'){
+    const o=parseArgs(args,['--preset']);
+    if(o['--preset']!=='preview'&&o['--preset']!=='final')throw new Error('package needs --preset preview|final');
+    const m=await packageEpisode(episode,o['--preset'],['es-ES','en-US']);
+    console.log(`TECHNICAL_PASS ${m.episodeId}: ${Object.keys(m.artifacts).length} artifacts. EDITORIAL_PENDING; no publication permitted.`);return;
+  }
+  if(command==='pipeline'){
+    const o=parseArgs(args,['--preset','--translation-en']);
+    if(o['--preset']!=='preview'&&o['--preset']!=='final')throw new Error('pipeline needs --preset preview|final');
+    if(!o['--translation-en'])throw new Error('pipeline requires --translation-en path');
+    const english=await localizationFile(episode,'en-US',o['--translation-en']);
+    const source=sourceLocalization(episode);
+    const db=new ProductionJobStore(join(ROOT,'workspace','jobs.sqlite'));
+    const inputHash=createHash('sha256').update(JSON.stringify(episode)).digest('hex');
+    try {
+      const master=join(outputFolder(episode,o['--preset']),'silent.mp4');
+      if(!(await stat(master).then(()=>true,()=>false))) {
+        const spec:JobSpec={episodeId:episode.episodeId,stage:'RENDER',inputHash:createHash('sha256').update(inputHash+o['--preset']).digest('hex')};
+        await executeStage(db,spec,async()=>{await render(episode,o['--preset'] as 'preview'|'final');return master;},sha256);
+      }
+      for(const [locale,localized] of [['es-ES',source],['en-US',english]] as const){
+        const dubHash=createHash('sha256').update(inputHash+JSON.stringify(localized)).digest('hex');
+        const dubSpec:JobSpec={episodeId:episode.episodeId,stage:'DUB',locale,inputHash:dubHash};
+        await executeStage(db,dubSpec,()=>dubEpisode(episode,localized,locale),async m=>createHash('sha256').update(JSON.stringify(m)).digest('hex'));
+        const muxSpec:JobSpec={episodeId:episode.episodeId,stage:'MUX',locale,inputHash:dubHash};
+        await executeStage(db,muxSpec,()=>muxDubbedVideo(episode,locale,o['--preset'] as 'preview'|'final'),sha256);
+      }
+      const release=await packageEpisode(episode,o['--preset'],['es-ES','en-US']);
+      console.log(`TECHNICAL_PASS ${release.episodeId}: bilingual audiovisual package complete; EDITORIAL_PENDING.`);
+    }finally{db.close();}
+    return;
+  }
 }
-
 main().catch(error => { console.error(error instanceof Error ? error.message : String(error)); process.exitCode = 1; });

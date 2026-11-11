@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "1.0",
+  "episodeId": "EP0001",
+  "locale": "en-US",
+  "lines": {
+    "DL001": "I've solved our home password problem.",
+    "DL002": "What problem?",
+    "DL003": "We keep forgetting them. I designed a family protocol.",
+    "DL004": "Leo, it's the Wi-Fi password, not a nuclear submarine code.",
+    "DL005": "Exactly. Every device gets its own clearance level.",
+    "DL006": "Where do we keep the master password?",
+    "DL007": "In a file protected by another password.",
+    "DL008": "Let me get this straight. To use Wi-Fi, I need a password.",
+    "DL009": "First you sign in. Then you get a temporary code.",
+    "DL010": "How do I get the code without Wi-Fi?",
+    "DL011": "By email. It's a very secure system.",
+    "DL012": "I'm going to my mother's. She only has one password.",
+    "DL013": "Can you ask her for it? It's for my protocol update.",
+    "DL014": "No."
+  }
+}

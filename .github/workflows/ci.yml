@@ -13,5 +13,20 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Install media tools for integration testing
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg espeak
       - run: npm install --no-audit --no-fund
       - run: npm test
+      - run: npm run doctor
+      - run: npm run pipeline:preview
+      - name: Verify bilingual H.264/AAC output
+        run: |
+          for lang in es-ES en-US; do
+            file="productions/EP0001/locales/$lang/final_preview.mp4"
+            test -s "$file"
+            ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of default=nw=1:nk=1 "$file" | grep -qx h264
+            ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of default=nw=1:nk=1 "$file" | grep -qx aac
+          done
+          test -s productions/EP0001/release_preview.json
+      - name: Verify rerun is idempotent
+        run: npm run pipeline:preview

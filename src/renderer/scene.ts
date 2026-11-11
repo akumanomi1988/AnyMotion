@@ -111,6 +111,46 @@ function livingRoom(): string {
   `;
 }
 
+/** Original provisional backgrounds; common 1280x720 world, same character anchoring. */
+function kitchen():string {
+ return `<defs><linearGradient id="tiles" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#F4EDE2"/><stop offset="1" stop-color="#E4D4C6"/></linearGradient></defs>
+  <rect width="1280" height="720" fill="url(#tiles)"/><rect y="536" width="1280" height="184" fill="#CDB49E"/>
+  <path d="M0 535H1280" stroke="#AB978A" stroke-width="10"/>
+  <rect x="100" y="100" width="344" height="220" rx="12" fill="#D4C4AF" stroke="#F8F3E9" stroke-width="13"/>
+  <rect x="118" y="117" width="308" height="185" fill="#B7D2D2"/><path d="M270 116V305M118 215H424" stroke="#F7F1E4" stroke-width="9"/>
+  <rect x="655" y="145" width="520" height="125" rx="13" fill="#8CA2A0" stroke="#4D6C6F" stroke-width="7"/>
+  <path d="M827 146V270M1000 146V270" stroke="#516E72" stroke-width="5"/>
+  <rect x="590" y="399" width="635" height="150" rx="6" fill="#9EAFAD" stroke="#627B7E" stroke-width="5"/>
+  <rect x="580" y="390" width="658" height="32" rx="6" fill="#DDC2AC"/>
+  <rect x="100" y="430" width="370" height="119" rx="6" fill="#A8BBB5" stroke="#587D80" stroke-width="5"/>
+  <rect x="90" y="409" width="395" height="34" rx="8" fill="#E1C6AD"/>
+  <rect x="160" y="444" width="125" height="75" rx="7" fill="#879D9C"/><circle cx="280" cy="480" r="5" fill="#E8BC64"/>
+  <rect x="975" y="405" width="202" height="18" fill="#727A80"/>
+  <path d="M990 388V354Q990 330 1015 330H1050" stroke="#707980" stroke-width="14" fill="none" stroke-linecap="round"/>
+  <ellipse cx="1045" cy="340" rx="36" ry="8" fill="#C8D5D5"/>
+  <rect x="507" y="599" width="280" height="17" rx="7" fill="#936D55"/><path d="M529 616V698M761 616V698" stroke="#936D55" stroke-width="16"/>
+  <ellipse cx="645" cy="596" rx="70" ry="16" fill="#EBC88D" opacity=".6"/>`;
+}
+
+function bedroom():string {
+ return `<defs><linearGradient id="bedroom-wall" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#E9E4E4"/><stop offset="1" stop-color="#D9D5D6"/></linearGradient></defs>
+  <rect width="1280" height="720" fill="url(#bedroom-wall)"/><rect y="530" width="1280" height="190" fill="#BDAC9E"/>
+  <path d="M0 529H1280" stroke="#A7988C" stroke-width="9"/>
+  <rect x="155" y="160" width="260" height="190" rx="15" fill="#FBF4EA" stroke="#B9A7A0" stroke-width="13"/>
+  <rect x="170" y="177" width="228" height="159" fill="#809CA2"/><path d="M284 177V336" stroke="#FFF7E8" stroke-width="11"/>
+  <path d="M169 336Q226 277 286 314Q338 282 401 336" fill="#A5BAC0"/>
+  <rect x="755" y="290" width="355" height="245" rx="24" fill="#8D929D"/>
+  <rect x="705" y="406" width="465" height="153" rx="32" fill="#E7D5C2" stroke="#9C8A84" stroke-width="5"/>
+  <path d="M725 472H1153" stroke="#D9BFAF" stroke-width="9"/>
+  <rect x="717" y="350" width="195" height="95" rx="30" fill="#F7EDE2"/>
+  <rect x="944" y="350" width="195" height="95" rx="30" fill="#E6DDD6"/>
+  <rect x="624" y="470" width="85" height="67" rx="5" fill="#A18172"/><rect x="1174" y="472" width="80" height="67" rx="5" fill="#A18172"/>
+  <rect x="649" y="390" width="12" height="80" fill="#7A766F"/><path d="M613 395L693 395L676 348H630Z" fill="#E8BC64"/>
+  <circle cx="1039" cy="165" r="75" fill="#F6EFEA" stroke="#C7BFB9" stroke-width="10"/>
+  <path d="M1039 165L1039 118M1039 165L1082 178" stroke="#6F7075" stroke-width="7" stroke-linecap="round"/>
+  <rect x="498" y="592" width="150" height="25" rx="9" fill="#D7B9A5"/><path d="M521 615V690M621 615V690" stroke="#987C6C" stroke-width="12"/>`;
+}
+
 function cameraAt(scene: EpisodeScene, ms: number): CameraShot {
   let camera: CameraShot = scene.camera[0]!.shot;
   for (const cue of scene.camera) if (cue.atMs <= ms) camera = cue.shot;
@@ -136,5 +176,5 @@ export function renderSvgFrame(episode: Episode, frame: number, fps: number, wid
   const scene = findScene(episode, ms);
   const shot = cameraAt(scene, ms);
   const actors = [avatar('vera', 347, 610, poseFor(scene, 'vera', ms)), avatar('leo', 924, 610, poseFor(scene, 'leo', ms))];
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${viewBox(shot)}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${xml(episode.title)}">\n${livingRoom()}\n${actors.join('\n')}\n</svg>\n`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${viewBox(shot)}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${xml(episode.title)}">\n${scene.setId === 'kitchen' ? kitchen() : scene.setId === 'bedroom' ? bedroom() : livingRoom()}\n${actors.join('\n')}\n</svg>\n`;
 }
