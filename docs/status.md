@@ -5,7 +5,7 @@ Date: 2026-11-11. The normative source requirements are `docs/master-blueprint.m
 | Phase | Estado actual | Evidencia | Condición pendiente |
 | --- | --- | --- | --- |
 | F0: identidad / elección de motor | PARTIAL | Render SVG/FFmpeg real y dirección artística provisional | Benchmark comparativo Remotion/Motion Canvas, identidad y licencias aprobadas |
-| F1: escena reproducible | TECHNICAL PASS | Clip 78 s, personajes, planos, SRT, MP4 H.264 verificado | Calidad artística comercial y Windows media |
+| F1: escena reproducible | TECHNICAL PASS | Clip 78 s, personajes, planos, SRT, MP4 H.264 verificado | Calidad artística comercial y benchmark largo en Windows con TTS final |
 | F2: guion largo autónomo | PARTIAL | Adaptador LLM, generador por etapas, episodio **escrito manualmente** de 9 minutos, 10 escenas y 90 diálogos | Validar proveedor LLM real y calidad narrativa original en revisión humana |
 | F3: voz, música y localización | DIAGNOSTIC PASS | Dos MP4 bilingües 540 s, stems separados, voz de referencia medida, sin rerender | TTS expresivo, escucha real, adaptación cultural aprobada |
 | F4: operación recuperable | TECHNICAL PROTOTYPE | SQLite, leases, backoff semántico, hashes, reintentos, backup/restauración y replay | SQLite estable, Windows y tres producciones autónomas distintas |
@@ -163,3 +163,14 @@ The required `media-windows` CI job performs actual SVG → Sharp → H.264 rend
 #### Windows workflow correction — 11/11/2026
 
 The first `media-windows` run demonstrated that FFmpeg can be installed and Sharp can load on GitHub-hosted Windows. It failed before video generation because CI had not compiled `dist/cli.js`. The job now runs `npm run build` before invoking render. Real Windows media verification remains OPEN until the new run finishes.
+
+
+#### Iteration 21 verification — required multiplatform CI (COMPLETED)
+
+At commit `70c1d59af23be6856bdbeefb9e21dc83a2d94ef3`, GitHub Actions run [43075837183](https://github.com/akumanomi1988/AnyMotion/actions/runs/43075837183) completed **SUCCESS** with all four jobs passing:
+
+- Ubuntu and Windows TypeScript contracts/unit tests. Local clean run: **73/73 tests PASS**.
+- Required Linux native media integration (78-second bilingual synthetic preview, QA, idempotent replay, and 24-second 1080p/30fps Sharp stream benchmark).
+- Required Windows native media smoke (actual FFmpeg installed through Chocolatey, Sharp rasterizer loaded, real 78-second H.264 render, 640x360/12fps and FFprobe duration verification).
+
+This replaces the previous *Windows media unverified* limitation only for the **CI preview**. Long-form 8–10-minute final-resolution renders, natural speech models, creative art direction, licensing evidence, real provider API calls, YouTube authorization and commercial publishing are still unverified. This is a **technical milestone, not F0–F6 completion**.

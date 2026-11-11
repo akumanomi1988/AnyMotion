@@ -293,3 +293,10 @@ The versioned `examples/benchmark-24.json` is a **24-second diagnostic**, contai
 ### Windows native media CI gate (F1)
 
 In addition to Node contract tests on Windows, the workflow now **requires** a native Windows render using Sharp SVG rasterization and FFmpeg H.264. A missing encoder or binary fails the job instead of silently skipping media coverage. This does not replace an on-device Windows test with the creator’s GPU, installed fonts, chosen voices and production-length workload.
+
+
+### Confirmed cross-platform media validation (iteration 21)
+
+GitHub Actions run [43075837183](https://github.com/akumanomi1988/AnyMotion/actions/runs/43075837183) passed all required jobs on Ubuntu and Windows. The Windows runner installed FFmpeg, loaded Sharp, rendered the **78-second** vector preview as H.264 and verified video dimensions, FPS and duration with FFprobe. Linux also passed the bilingual diagnostic pipeline and the 24-second 1080p/30fps streaming benchmark. The source code's locally executed suite is **73/73 PASS**.
+
+This establishes a real preview-level Windows workflow; it does **not** establish final TTS performance or art quality, unattended 10-minute Windows render, commercial rights or live YouTube publishing.
