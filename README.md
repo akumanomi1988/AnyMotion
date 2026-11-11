@@ -239,3 +239,20 @@ cat workspace/analytics-simulated-report.json
 ```
 
 Reemplazar el ejemplo por métricas exportadas de YouTube Studio **solo después de publicar episodios reales**, aportando evidencia. La evaluación real del piloto de seis episodios sigue pendiente.
+
+## Creative-memory registry (F2/F4 — implemented, editorial approval still required)
+
+A local SQLite catalog (`workspace/creative-catalog.sqlite`, excluded from Git) records a stable SHA-256 of each draft, its original premise, a short summary, and optionally **human-edited** conflict/escalation/prop/resolution metadata. No inter-episode plot continuity is required. Scores are conservative lexical/structural **review warnings**, not proof of original work or plagiarism.
+
+```bash
+npm run build
+node dist/cli.js creative-check examples/story-brief.json
+node dist/cli.js creative-index examples/episode-0002-editorial-draft.json --brief examples/story-brief.json
+# Optional: provide a strict, versioned fingerprint JSON at first indexing:
+# node dist/cli.js creative-index examples/episode-0002-editorial-draft.json --brief examples/story-brief.json --fingerprint examples/fingerprint.json
+node dist/cli.js creative-approve examples/episode-0002-editorial-draft.json
+```
+
+`creative-approve` **fails** without an actual full-resolution, commercially licensed, editorially approved release bound to the same episode hash. It is not a method to auto-approve an LLM draft. An indexed episode ID cannot be silently reused for a different story.
+
+The `autopilot` and `generate-staged` commands now save `workspace/drafts/<episodeId>/creative-context.json` before the first LLM call. That snapshot pins the current catalog context so that replays do not change paid prompts when new episodes are indexed. The generated draft is registered after validation, and possible similarities are reported for human review. Before first use in production, back up `workspace/creative-catalog.sqlite` along with the show bible, source contracts and episode manifests. `node:sqlite` is experimental under Node 22 and remains a production-qualification item.

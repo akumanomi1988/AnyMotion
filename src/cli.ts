@@ -16,7 +16,8 @@ import { configuredHttpTts } from './audio/tts-http.js';
 import { packageEpisode } from './production/package.js';
 import { ProductionJobStore, isRetryableJobError, type JobSpec } from './production/jobs.js';
 import { generateDraftFile, OpenAICompatibleStoryProvider, validateStoryBrief } from './story/llm.js';
-import { prepareEpisodeDrafts } from './production/autopilot.js';
+import {prepareDraftsWithCreativeMemory,pinnedCreativeBrief} from './production/creative-context.js';
+import {CreativeCatalog,draftFingerprint,premiseFingerprint,validateCreativeFingerprint} from './creative/catalog.js';
 import { freezeTimeline } from './timeline/freeze.js';
 import { generateLocalizationFile } from './story/localizer.js';
 import { verifyMaster } from './production/master.js';
@@ -197,11 +198,14 @@ async function main(): Promise<void> {
     console.log(`AnyMotion Studio (solo lectura) http://127.0.0.1:${service.port}`);
     return;
   }
-  if (!command || !['validate','subtitles','render','dub','mux','package','pipeline','jobs','generate','localize','editorial-check','editorial-approve','youtube-private','backup','backup-verify','restore','thumbnail','youtube-thumbnail','youtube-schedule','editorial-analyze','generate-staged','youtube-kit','autopilot','soundtrack','analytics'].includes(command) || !file) {
+  if (!command || !['validate','subtitles','render','dub','mux','package','pipeline','jobs','generate','localize','editorial-check','editorial-approve','youtube-private','backup','backup-verify','restore','thumbnail','youtube-thumbnail','youtube-schedule','editorial-analyze','generate-staged','youtube-kit','autopilot','soundtrack','analytics','creative-check','creative-index','creative-approve'].includes(command) || !file) {
     console.log(`Usage:
   node dist/cli.js doctor
   node dist/cli.js studio
   node dist/cli.js analytics examples/analytics.simulated.json --out workspace/analytics-demo.json
+  node dist/cli.js creative-check examples/story-brief.json
+  node dist/cli.js creative-index examples/episode-0002-editorial-draft.json --brief examples/story-brief.json
+  node dist/cli.js creative-approve examples/episode-0002-editorial-draft.json
   node dist/cli.js validate examples/pilot.json
   node dist/cli.js subtitles examples/pilot.json
   node dist/cli.js render examples/pilot.json --preset preview|final
@@ -226,6 +230,38 @@ async function main(): Promise<void> {
   node dist/cli.js generate-staged examples/story-brief.json --out workspace/new-episode.json --confirm GENERATE_STAGED:EP0002
   node dist/cli.js youtube-kit examples/pilot.json --metadata examples/youtube-metadata.example.json`);
     process.exitCode = 2; return;
+  }
+  if(command==='creative-check'){
+    if(args.length)throw new Error('creative-check accepts a story brief only');
+    const brief=validateStoryBrief(JSON.parse(await readFile(withinRoot(ROOT,file),'utf8')) as unknown);
+    const catalog=new CreativeCatalog(join(ROOT,'workspace','creative-catalog.sqlite'));
+    try{console.log(JSON.stringify(catalog.assess(premiseFingerprint(brief)),null,2));}finally{catalog.close();}
+    return;
+  }
+  if(command==='creative-index'){
+    const opts=parseArgs(args,['--brief','--fingerprint']);
+    if(!opts['--brief'])throw new Error('creative-index requires --brief with the originating story premise');
+    const brief=validateStoryBrief(JSON.parse(await readFile(withinRoot(ROOT,opts['--brief']),'utf8')) as unknown);
+    const episode=await loadEpisode(file);
+    const fingerprint=opts['--fingerprint']?
+      validateCreativeFingerprint(JSON.parse(await readFile(withinRoot(ROOT,opts['--fingerprint']),'utf8')) as unknown):draftFingerprint(brief,episode);
+    const catalog=new CreativeCatalog(join(ROOT,'workspace','creative-catalog.sqlite'));
+    try{
+      const assessment=catalog.assess(fingerprint);
+      const saved=catalog.registerDraft(episode,fingerprint);
+      console.log(JSON.stringify({status:saved.status,episodeId:episode.episodeId,assessment},null,2));
+    }finally{catalog.close();}
+    return;
+  }
+  if(command==='creative-approve'){
+    if(args.length)throw new Error('creative-approve requires only an episode file; editorial approval must exist already');
+    const episode=await loadEpisode(file);
+    const catalog=new CreativeCatalog(join(ROOT,'workspace','creative-catalog.sqlite'));
+    try{
+      const saved=await catalog.confirmEditorialApproval(episode,ROOT);
+      console.log(`CREATIVE_APPROVED ${saved.fingerprint.episodeId}: ${saved.approvalReleaseHash}`);
+    }finally{catalog.close();}
+    return;
   }
   if(command==='analytics'){
     const o=parseArgs(args,['--out']);
@@ -256,7 +292,8 @@ async function main(): Promise<void> {
     if(process.env.ANYMOTION_TEST_VOICE!=='synthetic'&&!configuredHttpTts())
       await runTool('espeak',['--version'],5000).catch(()=>{throw new Error('No configured HTTP TTS or eSpeak diagnostic tool; LLM calls were not made');});
     const provider=new OpenAICompatibleStoryProvider({model,apiKey:key,endpoint});
-    const draft=await prepareEpisodeDrafts(brief,provider,ROOT);
+    const draft=await prepareDraftsWithCreativeMemory(brief,provider,ROOT);
+    if(draft.assessment.repeatedPremiseRisk)console.warn(`CREATIVE_REVIEW_REQUIRED ${brief.episodeId}: high resemblance to ${draft.assessment.matches.map(m=>m.episodeId).join(', ')}`);
     console.log(`DRAFTS_READY ${brief.episodeId}; LLM calls this run: ${draft.llmCallsThisRun}; status EDITORIAL_PENDING`);
     const log=await executable(process.execPath,[resolve(ROOT,'dist','cli.js'),'pipeline',draft.episodePath,'--preset','preview','--translation-en',draft.localizationPath]);
     console.log(log);
@@ -265,8 +302,8 @@ async function main(): Promise<void> {
   }
   if(command==='generate-staged'){
     const opts=parseArgs(args,['--out','--confirm']);
-    const brief=validateStoryBrief(JSON.parse(await readFile(resolve(ROOT,file),'utf8')) as unknown);
-    if(!opts['--out']||opts['--confirm']!==`GENERATE_STAGED:${brief.episodeId}`)throw new Error('Staged LLM generation requires --out and exact confirmation');
+    const sourceBrief=validateStoryBrief(JSON.parse(await readFile(resolve(ROOT,file),'utf8')) as unknown);
+    if(!opts['--out']||opts['--confirm']!==`GENERATE_STAGED:${sourceBrief.episodeId}`)throw new Error('Staged LLM generation requires --out and exact confirmation');
     const output=withinRoot(ROOT,opts['--out']);
     const outlineOutput=withinRoot(ROOT,opts['--out']+'.outline.json');
     for(const destination of [output,outlineOutput]){
@@ -275,6 +312,7 @@ async function main(): Promise<void> {
     }
     const model=process.env.ANYMOTION_LLM_MODEL,key=process.env.ANYMOTION_LLM_API_KEY,endpoint=process.env.ANYMOTION_LLM_ENDPOINT;
     if(!model||!key||!endpoint)throw new Error('Staged generation needs explicit LLM model/key/endpoint');
+    const brief=await pinnedCreativeBrief(sourceBrief,ROOT);
     const session=await startStagedProviderSession(brief,new OpenAICompatibleStoryProvider({model,apiKey:key,endpoint}),ROOT);
     let generated;
     try{generated=await createStagedStory(brief,session.provider);}
@@ -283,6 +321,13 @@ async function main(): Promise<void> {
     await mkdir(resolve(output,'..'),{recursive:true});
     await writeFile(outlineOutput,JSON.stringify(generated.outline,null,2)+'\n',{flag:'wx'});
     await writeFile(output,JSON.stringify(generated.episode,null,2)+'\n',{flag:'wx'});
+    const catalog=new CreativeCatalog(join(ROOT,'workspace','creative-catalog.sqlite'));
+    try{
+      const fp=draftFingerprint(sourceBrief,generated.episode);
+      const risk=catalog.assess(fp);
+      catalog.registerDraft(generated.episode,fp);
+      if(risk.repeatedPremiseRisk)console.warn(`CREATIVE_REVIEW_REQUIRED ${sourceBrief.episodeId}: possible narrative repetition`);
+    }finally{catalog.close();}
     console.log(`STAGED_DRAFT_READY ${brief.episodeId}: ${generated.episode.scenes.length} scenes, ${generated.llmCalls} LLM calls. EDITORIAL_PENDING.`);return;
   }
   if(command==='generate') {

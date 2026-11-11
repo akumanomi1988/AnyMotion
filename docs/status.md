@@ -116,3 +116,11 @@ Critical remaining work: Remotion versus Motion Canvas choice and licensing, act
 - It calculates weighted platform-reported impression CTR, measured watch duration, episode cost, RPM (only for actual observed revenue), financial break-even views and locale coverage. Returning viewer ratio uses unique viewers when available.
 - It never declares SCALE/STOP from synthetic data, never estimates unobserved revenue and never attributes localized views to incremental dubbing revenue.
 - `node dist/cli.js analytics <input.json> --out <report.json>` produces an immutable JSON artifact; unit tests check validation, null economics, and sample calculations. Real channel metrics remain unavailable until the six-episode pilot.
+
+## Iteración 17 — Memoria editorial y riesgo de repetición (comprobado localmente)
+
+- `src/creative/catalog.ts`: libro SQLite inmutable por `episodeId` y SHA-256, huella editorial estructurada, comparación explicable entre premisas anteriores y nuevas, estado `DRAFT`/`EDITORIAL_APPROVED` comprobado contra firmas de entregas reales.
+- `src/production/creative-context.ts`: snapshot versionado de premisas anteriores antes de gastar tokens de LLM; reintentos con exactamente el mismo contexto. `autopilot` y `generate-staged` consumen el contexto persistente y registran los nuevos borradores. No se inventan metadatos de conflicto cuando el LLM no los ha aportado de manera validada.
+- CLI `creative-check`, `creative-index` y `creative-approve`; aprobación no permitida si falta una entrega final verificable.
+- Prueba real de CLI, SQLite en disco y mini pipeline bilingüe de 78 segundos con voz sintética de prueba; la voz final y la calidad editorial siguen pendientes.
+- **No es una memoria de continuidad argumental** y la similitud léxica no garantiza originalidad ni monetización. No se ha contactado un proveedor LLM real.
