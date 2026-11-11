@@ -54,6 +54,11 @@ node dist/cli.js localize examples/pilot.json --locale en-US --out examples/pilo
 ```
  Su historia, expresividad y adaptación deben aprobarse manualmente. El guion ficticio de EP0001 y la localización en inglés son *fixtures*, no evidencias de creatividad automática.
 
+## Base de conocimiento
+
+- [Documento maestro de producto v2.0](docs/master-blueprint.md).
+- [Estado técnico verificado y fases pendientes](docs/status.md).
+
 ## Arquitectura
 
 ```text
