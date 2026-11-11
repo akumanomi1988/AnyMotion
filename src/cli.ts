@@ -26,6 +26,8 @@ import {makeThumbnail} from './production/thumbnail.js';
 import {uploadApprovedThumbnail} from './publishing/thumbnail-upload.js';
 import {backupEpisode,restoreEpisodeBackup,verifyEpisodeBackup} from './production/backup.js';
 import {startStudioServer} from './studio/server.js';
+import {scheduleApprovedVideo} from './publishing/schedule.js';
+import {analyzeEditorial} from './quality/editorial.js';
 
 const ROOT = resolve(process.cwd());
 const TEMP_ROOT = resolve(ROOT, 'workspace', 'temp');
@@ -190,7 +192,7 @@ async function main(): Promise<void> {
     console.log(`AnyMotion Studio (solo lectura) http://127.0.0.1:${service.port}`);
     return;
   }
-  if (!command || !['validate','subtitles','render','dub','mux','package','pipeline','jobs','generate','localize','editorial-check','editorial-approve','youtube-private','backup','backup-verify','restore','thumbnail','youtube-thumbnail','autopilot'].includes(command) || !file) {
+  if (!command || !['validate','subtitles','render','dub','mux','package','pipeline','jobs','generate','localize','editorial-check','editorial-approve','youtube-private','backup','backup-verify','restore','thumbnail','youtube-thumbnail','youtube-schedule','editorial-analyze','autopilot'].includes(command) || !file) {
     console.log(`Usage:
   node dist/cli.js doctor
   node dist/cli.js studio
@@ -211,7 +213,9 @@ async function main(): Promise<void> {
   node dist/cli.js youtube-private examples/pilot.json --metadata examples/youtube-metadata.example.json --confirm UPLOAD_PRIVATE:EP0001
   node dist/cli.js autopilot examples/story-brief.json --confirm GENERATE_PREVIEW:EP0003
   node dist/cli.js thumbnail examples/pilot.json --frame-ms 35000
-  node dist/cli.js youtube-thumbnail examples/pilot.json --confirm UPLOAD_THUMBNAIL:EP0001`);
+  node dist/cli.js youtube-thumbnail examples/pilot.json --confirm UPLOAD_THUMBNAIL:EP0001
+  node dist/cli.js youtube-schedule examples/pilot.json --metadata examples/youtube-metadata.example.json --publish-at 2027-01-01T18:00:00Z --confirm SCHEDULE:EP0001:2027-01-01T18:00:00Z
+  node dist/cli.js editorial-analyze examples/pilot.json`);
     process.exitCode = 2; return;
   }
   if(command==='localize'){
@@ -245,6 +249,12 @@ async function main(): Promise<void> {
     console.log(`DRAFT ${result.episode.episodeId}; model=${result.model}; warnings=${result.warnings.join(';')||'none'}. Human editorial approval required.`);return;
   }
   const episode = await loadEpisode(file);
+  if (command === 'editorial-analyze') {
+    const opts=parseArgs(args,['--prior']);
+    const prior=opts['--prior']?JSON.parse(await readFile(resolve(ROOT,opts['--prior']),'utf8')) as unknown:[];
+    if(!Array.isArray(prior))throw new Error('--prior expects an array of prior episode summaries');
+    console.log(JSON.stringify(analyzeEditorial(episode,prior as string[]),null,2));return;
+  }
   if (command === 'validate') { console.log(`PASS ${episode.episodeId}: ${episode.scenes.length} scenes, ${episode.durationMs}ms`); return; }
   if (command === 'subtitles') { const files = await exportSrt(episode); console.log(files.join('\n')); return; }
   if(command==='backup'||command==='backup-verify'||command==='restore'){
@@ -274,6 +284,15 @@ async function main(): Promise<void> {
     if(!o['--notes-file'])throw new Error('Editorial approval requires --notes-file');
     const decision=await approveEditorial(episode,{reviewer:o['--reviewer']??'',reviewNotes:await readFile(resolve(ROOT,o['--notes-file']),'utf8'),confirm:o['--confirm']??'',commercialRightsConfirmed:o['--rights-confirmed']==='yes'});
     console.log(`EDITORIAL_APPROVED ${decision.episodeId} for release ${decision.releaseSha256}`);return;
+  }
+  if(command==='youtube-schedule'){
+    const opts=parseArgs(args,['--metadata','--publish-at','--confirm']);
+    if(!opts['--metadata']||!opts['--publish-at']||opts['--confirm']!==`SCHEDULE:${episode.episodeId}:${opts['--publish-at']}`)
+      throw new Error('YouTube scheduling requires --metadata, --publish-at UTC and exact --confirm SCHEDULE:EPID:TIME');
+    const metadata=validateVideoMetadata(JSON.parse(await readFile(resolve(ROOT,opts['--metadata']),'utf8')) as unknown);
+    const token=await acquireYouTubeAccessToken(credentialsFromEnvironment());
+    const result=await scheduleApprovedVideo({episode,metadata,publishAt:opts['--publish-at'],accessToken:token,confirm:opts['--confirm']});
+    console.log(`SCHEDULED ${result.videoId} at ${result.publishAt}; verified private until publication time`);return;
   }
   if(command==='youtube-thumbnail'){
     const o=parseArgs(args,['--confirm']);
@@ -322,7 +341,7 @@ async function main(): Promise<void> {
     const o=parseArgs(args,['--preset','--translation-en']);
     if(o['--preset']!=='preview'&&o['--preset']!=='final')throw new Error('pipeline needs --preset preview|final');
     if(!o['--translation-en'])throw new Error('pipeline requires --translation-en path');
-    if(process.env.ANYMOTION_TEST_VOICE!=='synthetic')await runTool('espeak',['--version'],5000).catch(()=>{throw new Error('eSpeak diagnostic TTS not available on PATH; install eSpeak before pipeline:preview');});
+    if(process.env.ANYMOTION_TEST_VOICE!=='synthetic'&&!configuredHttpTts())await runTool('espeak',['--version'],5000).catch(()=>{throw new Error('eSpeak diagnostic TTS not available on PATH; install eSpeak before pipeline:preview');});
     const english=await localizationFile(episode,'en-US',o['--translation-en']);
     const source=sourceLocalization(episode);
     const db=new ProductionJobStore(join(ROOT,'workspace','jobs.sqlite'));

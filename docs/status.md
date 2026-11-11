@@ -59,3 +59,11 @@ Critical remaining work: Remotion versus Motion Canvas choice and licensing, act
 
 - Read-only local Studio (`npm run studio`), tested with HTTP Range playback on 127.0.0.1; no remote exposure or edit/publish actions.
 - Thumbnail PNG generation and guarded `thumbnails.set` implementation have mock tests; the real channel and permissions are unverified.
+
+
+## Additional implementation (November 11, 2026)
+
+- Deterministic editorial analysis emits auditable risks (dialogue repetition, sparse stage action, long scenes/holds, potential premise overlap). It is explicitly not an originality/humor approval.
+- Guarded future YouTube scheduler, using the documented `videos.update` status request. Requires verified full release, explicit editorial approval, exact private upload receipt, uploaded thumbnail receipt, canonical UTC schedule >= one hour in future, and separate explicit command confirmation. Live channel validation is still OPEN.
+- HTTP TTS no longer requires eSpeak as a preflight dependency when a commercial TTS provider is configured.
+- Tests added for strict time validation, remote privacy, scheduling idempotency and tampered thumbnail evidence.

@@ -165,3 +165,71 @@ test('YouTube metadata localization is constrained and passed to official insert
  assert.throws(()=>validateVideoMetadata({...localized,localizations:{'es-ES':localized.localizations['en-US']}}),/source metadata locale/);
  assert.throws(()=>validateVideoMetadata({...localized,localizations:{'../':localized.localizations['en-US']}}),/Unsupported/);
 });
+
+import {scheduleApprovedVideo,validatePublishAt} from '../publishing/schedule.js';
+
+test('YouTube scheduling refuses past dates, invalid UTC and near-immediate publication',()=>{
+ const now=new Date('2026-11-11T12:00:00Z');
+ assert.throws(()=>validatePublishAt('2026-11-10T10:00:00Z',now),/future/);
+ assert.throws(()=>validatePublishAt('2026-11-11T12:30:00Z',now),/future/);
+ assert.throws(()=>validatePublishAt('2026-11-11T15:00:00+01:00',now),/UTC/);
+ assert.throws(()=>validatePublishAt('2026-02-30T15:00:00Z',now),/Invalid/);
+ assert.equal(validatePublishAt('2026-11-12T15:00:00Z',now),'2026-11-12T15:00:00Z');
+});
+
+test('schedule requires approved full release, private video, verified thumbnail and remote confirmation',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'anymotion-schedule-'));
+ const publishAt='2026-11-19T13:00:00Z';
+ const now=new Date('2026-11-11T12:00:00Z');
+ try{
+  await seed(root); await approveEditorial(ep,review,root);
+  const folder=join(root,'productions',ep.episodeId);
+  const publication=join(folder,'publication');await mkdir(publication,{recursive:true});
+  const video=await readFile(join(folder,'locales','es-ES','final_final.mp4'));
+  const id='abcdefghijk';
+  await writeFile(join(publication,'youtube-private.json'),JSON.stringify({status:'PRIVATE_UPLOADED',privacyStatus:'private',videoId:id,sourceSha256:sha(video),metadataSha256:sha(JSON.stringify(metadata))}));
+  const thumbDir=join(folder,'thumbnails');await mkdir(thumbDir,{recursive:true});
+  const png=Buffer.from('simulated-original-thumb');
+  await writeFile(join(thumbDir,'thumbnail.png'),png);
+  await writeFile(join(thumbDir,'thumbnail.json'),JSON.stringify({status:'THUMBNAIL_READY',episodeId:ep.episodeId,sourceHash:sha(JSON.stringify(ep)),imageHash:sha(png)}));
+  await writeFile(join(publication,'youtube-thumbnail.json'),JSON.stringify({status:'THUMBNAIL_UPLOADED',videoId:id,imageHash:sha(png)}));
+  const calls:string[]=[];let scheduled:string|undefined;
+  const transport:Transport=async(url,init)=>{
+   calls.push(init?.method??'GET');
+   if(init?.method==='PUT'){
+    const payload=JSON.parse(String(init.body)) as {status:{privacyStatus:string;publishAt:string;selfDeclaredMadeForKids:boolean};id:string};
+    assert.equal(payload.status.privacyStatus,'private');assert.equal(payload.status.selfDeclaredMadeForKids,false);
+    assert.equal(payload.id,id);assert.equal(String(url),'https://www.googleapis.com/youtube/v3/videos?part=status');
+    scheduled=payload.status.publishAt;
+    return new Response(JSON.stringify({id,status:{privacyStatus:'private',publishAt:scheduled}}),{status:200});
+   }
+   return new Response(JSON.stringify({items:[{id,status:{privacyStatus:'private',publishAt:scheduled}}]}),{status:200});
+  };
+  await assert.rejects(()=>scheduleApprovedVideo({episode:ep,metadata,publishAt,accessToken:'token',confirm:'WRONG',root,now,transport}),/confirmation/);
+  const first=await scheduleApprovedVideo({episode:ep,metadata,publishAt,accessToken:'token',confirm:`SCHEDULE:${ep.episodeId}:${publishAt}`,root,now,transport});
+  assert.equal(first.status,'SCHEDULED');assert.deepEqual(calls,['GET','PUT','GET']);
+  const again=await scheduleApprovedVideo({episode:ep,metadata,publishAt,accessToken:'token',confirm:`SCHEDULE:${ep.episodeId}:${publishAt}`,root,now,transport});
+  assert.equal(again.videoId,id);assert.deepEqual(calls,['GET','PUT','GET','GET']);
+  await assert.rejects(()=>scheduleApprovedVideo({episode:ep,metadata,publishAt:'2026-11-20T13:00:00Z',accessToken:'token',confirm:`SCHEDULE:${ep.episodeId}:2026-11-20T13:00:00Z`,root,now,transport}),/differs/);
+  await writeFile(join(thumbDir,'thumbnail.png'),'tampered');
+  await assert.rejects(()=>scheduleApprovedVideo({episode:ep,metadata,publishAt,accessToken:'token',confirm:`SCHEDULE:${ep.episodeId}:${publishAt}`,root,now,transport}),/Thumbnail not verified/);
+ }finally{await rm(root,{force:true,recursive:true});}
+});
+
+test('schedule refuses a remotely public video, without sending a status update',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'anymotion-public-schedule-'));
+ try{
+  await seed(root);await approveEditorial(ep,review,root);
+  const dir=join(root,'productions',ep.episodeId),pub=join(dir,'publication');await mkdir(pub,{recursive:true});
+  const video=await readFile(join(dir,'locales','es-ES','final_final.mp4'));
+  await writeFile(join(pub,'youtube-private.json'),JSON.stringify({status:'PRIVATE_UPLOADED',privacyStatus:'private',videoId:'abcdefghijk',sourceSha256:sha(video),metadataSha256:sha(JSON.stringify(metadata))}));
+  const thumbDir=join(dir,'thumbnails');await mkdir(thumbDir,{recursive:true});const png=Buffer.from('fake-thumb');
+  await writeFile(join(thumbDir,'thumbnail.png'),png);
+  await writeFile(join(thumbDir,'thumbnail.json'),JSON.stringify({status:'THUMBNAIL_READY',episodeId:ep.episodeId,sourceHash:sha(JSON.stringify(ep)),imageHash:sha(png)}));
+  await writeFile(join(pub,'youtube-thumbnail.json'),JSON.stringify({status:'THUMBNAIL_UPLOADED',videoId:'abcdefghijk',imageHash:sha(png)}));
+  let updates=0;
+  const transport:Transport=async(_,init)=>{if(init?.method==='PUT')updates++;return new Response(JSON.stringify({items:[{id:'abcdefghijk',status:{privacyStatus:'public'}}]}),{status:200});};
+  await assert.rejects(()=>scheduleApprovedVideo({episode:ep,metadata,publishAt:'2026-11-19T13:00:00Z',accessToken:'token',confirm:`SCHEDULE:${ep.episodeId}:2026-11-19T13:00:00Z`,now:new Date('2026-11-11T12:00:00Z'),root,transport}),/not verified private/);
+  assert.equal(updates,0);
+ }finally{await rm(root,{force:true,recursive:true});}
+});

@@ -141,94 +141,17 @@ This cannot be performed with the diagnostic example. Only a private YouTube vid
 On Windows, the pure Node contract/unit tests run with Node 22. Media rendering still requires a compatible `ffmpeg` build with the SVG decoder (`librsvg`), and the Windows 1080p/30fps pipeline must be benchmarked on the target computer. Node 22 `node:sqlite` is still experimental in this environment. Read `docs/status.md` before treating a feature as production-ready.
 
 
-## Explicit backup and safe private distribution commands
+## Editorial assessment and safe scheduled publishing (F5 extension)
+
+`node dist/cli.js editorial-analyze examples/pilot.json` emits an evidence-based risk report for dialogue repetition, long static shots, silent gaps, and premise similarity. **It never approves comedy or originality**; manual judgment remains mandatory. To compare with previous premises, pass `--prior path/to/summaries.json` containing a JSON string array.
+
+A video may be scheduled **only** after a full-resolution, editorially approved release has a confirmed private upload and a separately verified uploaded thumbnail. The official `videos.update` call is **never** executed by the pipeline or Studio UI. It requires UTC time at least one hour in the future and an exact episode/time confirmation:
 
 ```bash
-node dist/cli.js backup examples/pilot.json --to /external/anymotion-backups
-node dist/cli.js backup-verify examples/pilot.json --from /external/anymotion-backups
-# In an empty replacement workspace only:
-node dist/cli.js restore examples/pilot.json --from /external/anymotion-backups
-```
-
-**No current demo is publishable.** When a *future* full-quality release has been checked, set `ANYMOTION_APPROVED_VOICE_PROVIDERS` to an explicit comma-separated list of reviewed commercial voice provider IDs. For example, `tts-http:<model-hash>` matching the generated voice manifest (not a literal value from this README). This does not replace a review of the voice license or the program itself. Editorial approval requires a release with signed-off art, narrative and commercial rights; it refuses preview/diagnostic audio.
-
-With correctly scoped OAuth secrets supplied in the environment, an explicitly authorized operator can perform a **private-only** upload:
-
-```bash
-node dist/cli.js youtube-private examples/my-approved-episode.json \
+node dist/cli.js youtube-schedule examples/pilot.json \
   --metadata examples/youtube-metadata.example.json \
-  --confirm UPLOAD_PRIVATE:EP0002
+  --publish-at 2027-01-01T18:00:00Z \
+  --confirm SCHEDULE:EP0001:2027-01-01T18:00:00Z
 ```
 
-The uploader is tested with an HTTP mock only. It has **not** been run against a real YouTube channel, and multi-language audio uploads require separate verification in YouTube Studio.
-
-### Thumbnail from the same visual identity
-
-```bash
-node dist/cli.js thumbnail examples/pilot.json --frame-ms 35000
-```
-
-Creates a deterministic 1280×720 PNG and its checksum manifest under `productions/<episodeId>/thumbnails/`. It is a visual draft; editorial review of composition, typography and localizations remains required. This command does **not** upload a YouTube thumbnail.
-
-
-### Consola local de inspección
-
-```bash
-npm run build
-npm run studio
-# Abre http://127.0.0.1:4321
-```
-
-Interfaz de **solo lectura**: listado de producciones, estado del paquete, duración, idiomas, reproducción de los MP4 con streaming por rangos. No acepta operaciones de escritura ni publica contenido. Solo escucha en `127.0.0.1`; no hay autenticación porque está diseñada exclusivamente para el operador local. No debe exponerse por proxy o Internet sin añadir autenticación y controles CSRF.
-
-### Subida protegida de miniaturas (F5, API oficial)
-
-Tras aprobar una **versión final** con voces y derechos revisados, subir el vídeo como privado y generar la miniatura original, puedes solicitar **por separado** su carga al mismo `videoId`:
-
-```bash
-node dist/cli.js youtube-thumbnail examples/my-approved-episode.json \
-  --confirm UPLOAD_THUMBNAIL:EP0002
-```
-
-El comando verifica el `editorial-approval.json` de la revisión final, el recibo de subida privada, el SHA-256 y las dimensiones del PNG. Comprueba que YouTube sigue mostrando el vídeo como privado antes y después del cambio. No modifica título, visibilidad ni fecha de publicación. Registra un recibo idempotente en `publication/youtube-thumbnail.json` y, si la carga falla, deja el error visible. Requiere un token OAuth válido: las pruebas usan HTTP simulado y **no acreditan funcionamiento con un canal real**.
-
-La API `thumbnails.set` solo establece la miniatura predeterminada; las miniaturas localizadas y pistas de doblaje quedan fuera de esta implementación hasta verificar funciones del canal en Studio. Documentación oficial: https://developers.google.com/youtube/data/reference/rest/v3/thumbnails/set
-
-### Metadatos multilingües en un único vídeo
-
-Puedes añadir opcionalmente un objeto `localizations` en el JSON de metadatos privado, usando códigos BCP-47 y títulos/descripciones adaptados. El `snippet` principal se mantiene en español (`es-ES`); el adaptador añade `part=localizations` solo cuando se han proporcionado traducciones válidas:
-
-```json
-{
-  "title": "El cajón de todo · Sitcom animada",
-  "description": "Episodio original sobre una pareja y el cajón doméstico que nunca permanece organizado.",
-  "categoryId": "24",
-  "madeForKids": false,
-  "localizations": {
-    "en-US": {
-      "title": "The Everything Drawer · Animated Sitcom",
-      "description": "An original animated episode about a couple, an ordinary drawer, and an excessively ambitious organization system."
-    }
-  }
-}
-```
-
-Para evitar llamadas OAuth accidentales, las órdenes `youtube-private` y `youtube-thumbnail` rechazan confirmaciones incorrectas **antes** de solicitar un token al proveedor.
-
-### Autopilot: de una premisa al borrador audiovisual
-
-La opción `autopilot` encadena dos tareas LLM con salidas estrictamente validadas, la generación del episodio y su adaptación inglesa. Si los contratos son válidos, ejecuta el pipeline de **vista previa** (nunca publicación ni aprobación automática):
-
-```bash
-# Se requiere configurar ANYMOTION_LLM_ENDPOINT / ANYMOTION_LLM_MODEL / ANYMOTION_LLM_API_KEY
-# y el TTS de diagnóstico o ANYMOTION_TTS_*. Consulta .env.example.
-node dist/cli.js autopilot examples/story-brief.json \
-  --confirm GENERATE_PREVIEW:EP0003
-```
-
-- La orden realiza un preflight de FFmpeg, códecs y TTS **antes de las llamadas LLM**. No ejecuta el agente si faltan credenciales o la frase de autorización.
-- Al generar por primera vez consume hasta **dos solicitudes LLM** (una de guion y una de traducción); los límites de tokens están configurados por etapa. Un proveedor externo puede facturar esas solicitudes. No existe aún un cálculo fiable del coste en euros.
-- `workspace/drafts/<episodeId>/` almacena la petición, el JSON validado, traducción y hashes. Reanudar el mismo episodio no vuelve a gastar solicitudes si ambos archivos están íntegros; si cambian los datos, la ejecución se bloquea.
-- Si el texto no cabe en la ventana de habla o no cumple calidad técnica, falla con un diagnóstico, sin recortar la locución. Las correcciones editoriales y de prosodia aún requieren intervención. Solo produce un vídeo de prueba con estado `EDITORIAL_PENDING`.
-
-No se ha ejecutado contra un LLM real en esta entrega. Los tests utilizan proveedor simulado y la prueba técnica de nueve minutos **no representa una historia original apta para publicar**.
+The scheduler validates `status.privacyStatus=private` before and after the update, verifies its remote `publishAt`, and saves a content-addressed receipt. A past time can cause immediate public publication in YouTube, therefore it is rejected. The live API has **not** been exercised with this project; the test suite uses mocked responses. Scheduling is a consequential publishing action requiring the operator's explicit authorization.
