@@ -56,11 +56,46 @@ function clipVoice(locale: Locale, speaker: CharacterId): string {
   return `${locale === 'es-ES' ? 'es' : 'en-us'}+${speaker === 'vera' ? 'f3' : 'm3'}`;
 }
 
-async function durationMs(wav: string): Promise<number> {
-  const result = JSON.parse(await runTool('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'json', wav])) as {format: {duration: string}};
-  const ms = Math.round(Number(result.format.duration) * 1000);
-  if (!Number.isSafeInteger(ms) || ms <= 0) throw new Error(`TTS returned invalid duration: ${wav}`);
-  return ms;
+interface Pcm16Wave { sampleRate: number; samples: Buffer }
+/** Parse strict RIFF/PCM16 safely: direct playback avoids a child process per TTS line. */
+export function parsePcm16Wave(data: Buffer): Pcm16Wave | null {
+  if(data.length<12||data.toString('ascii',0,4)!=='RIFF'||data.toString('ascii',8,12)!=='WAVE')return null;
+  const declared=data.readUInt32LE(4)+8;
+  if(declared>data.length||declared<44)throw new Error('Malformed WAV RIFF size');
+  let cursor=12, sampleRate=0, channels=0, bits=0, format=0, blockAlign=0;
+  let sound:Buffer|undefined;
+  while(cursor+8<=declared){
+    const name=data.toString('ascii',cursor,cursor+4),length=data.readUInt32LE(cursor+4);
+    const start=cursor+8,end=start+length;
+    if(end>declared||end<start)throw new Error('Invalid WAV chunk length');
+    if(name==='fmt '){
+      if(length<16||sampleRate)throw new Error('Invalid or duplicate WAV fmt chunk');
+      format=data.readUInt16LE(start);channels=data.readUInt16LE(start+2);sampleRate=data.readUInt32LE(start+4);
+      blockAlign=data.readUInt16LE(start+12);bits=data.readUInt16LE(start+14);
+    }
+    if(name==='data'){
+      if(sound)throw new Error('Duplicate WAV data chunk');
+      sound=data.subarray(start,end);
+    }
+    cursor=end+(length%2);
+  }
+  if(format!==1||channels!==1||bits!==16||blockAlign!==2||sampleRate<8000||sampleRate>96000)return null;
+  if(!sound||sound.length%2!==0||!sound.length)throw new Error('Invalid WAV PCM audio data');
+  return {sampleRate,samples:sound};
+}
+
+async function measuredVoice(wav: string): Promise<{durationMs:number;pcm: Pcm16Wave|null}> {
+  const source=await readFile(wav);
+  if(source.length>40*1024*1024)throw new Error('Single TTS clip is oversized');
+  const pcm=parsePcm16Wave(source);
+  let ms:number;
+  if(pcm)ms=Math.round(pcm.samples.length*1000/(pcm.sampleRate*2));
+  else {
+    const result=JSON.parse(await runTool('ffprobe',['-v','error','-show_entries','format=duration','-of','json',wav])) as {format:{duration:string}};
+    ms=Math.round(Number(result.format.duration)*1000);
+  }
+  if(!Number.isSafeInteger(ms)||ms<=0)throw new Error(`TTS returned invalid duration: ${wav}`);
+  return {durationMs:ms,pcm};
 }
 
 function pcmWave(samples: Buffer): Buffer {
@@ -112,6 +147,7 @@ export async function dubEpisode(episodeInput: Episode, localizationInput: unkno
       const allowedMs = line.endMs - line.startMs;
       const source = join(tmp, `${line.lineId}.wav`);
       let duration = 0;
+      let sourcePcm:Pcm16Wave|null=null;
       let speakingRate = 205;
       if (process.env.ANYMOTION_TEST_VOICE === 'synthetic') {
         // CI-only deterministic synthetic tone. It deliberately never simulates intelligible speech.
@@ -123,28 +159,34 @@ export async function dubEpisode(episodeInput: Episode, localizationInput: unkno
           pcm.writeInt16LE(Math.round(1300*fade*Math.sin(2*Math.PI*frequency*i/SAMPLE_RATE)),i*2);
         }
         await writeFile(source,pcmWave(pcm));
-        duration=await durationMs(source);
+        ({durationMs:duration,pcm:sourcePcm}=await measuredVoice(source));
       } else if(provider){
         for(const speed of [1,1.08,1.16]){
           speakingRate=Math.round(speed*100);
           await rm(source,{force:true});
           await provider.synthesize(text,locale,line.characterId,source,speed);
-          duration=await durationMs(source);
+          ({durationMs:duration,pcm:sourcePcm}=await measuredVoice(source));
           if(duration<=allowedMs*MAX_TEMPO)break;
         }
       } else {
         for (const rate of [205, 230, 250, 270]) {
           speakingRate = rate;
           await runTool('espeak', ['-v', clipVoice(locale, line.characterId), '-s', String(rate), '-w', source, text]);
-          duration = await durationMs(source);
+          ({durationMs:duration,pcm:sourcePcm}=await measuredVoice(source));
           if (duration <= allowedMs * MAX_TEMPO) break;
         }
       }
       const tempo = Math.max(1, duration / allowedMs);
       if (tempo > MAX_TEMPO + .00001) throw new Error(`${line.lineId} exceeds ${allowedMs}ms dialogue window; measured ${duration}ms at max voice speed. Rewrite line or refreeze timeline.`);
       const pcm = join(tmp, `${line.lineId}.pcm`);
-      await runTool('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-nostdin', '-y', '-i', source, '-af', `atempo=${tempo.toFixed(5)},aresample=${SAMPLE_RATE}`, '-ac', '1', '-ar', String(SAMPLE_RATE), '-f', 's16le', pcm]);
-      const raw = await readFile(pcm);
+      let raw:Buffer;
+      if(sourcePcm?.sampleRate===SAMPLE_RATE && tempo<=1.000001){
+        // A validated 24kHz mono WAV is already output-ready, saving two process spawns per line.
+        raw=sourcePcm.samples;
+      }else{
+        await runTool('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-nostdin', '-y', '-i', source, '-af', `atempo=${tempo.toFixed(5)},aresample=${SAMPLE_RATE}`, '-ac', '1', '-ar', String(SAMPLE_RATE), '-f', 's16le', pcm]);
+        raw=await readFile(pcm);
+      }
       const samples = Math.floor(raw.length / 2);
       const offset = Math.round(line.startMs * SAMPLE_RATE / 1000);
       const permitted = Math.round(allowedMs * SAMPLE_RATE / 1000);

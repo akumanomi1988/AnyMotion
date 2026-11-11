@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {ProductionJobStore,type JobSpec,jobKey} from '../production/jobs.js';
+import {ProductionJobStore,type JobSpec,jobKey,isRetryableJobError} from '../production/jobs.js';
 const spec:JobSpec={episodeId:'EP0001',stage:'DUB',locale:'en-US',inputHash:createHash('sha256').update('fixture').digest('hex')};
 
 test('job claims are transactional, leased and idempotent',()=>{
@@ -42,3 +42,12 @@ test('invalid job specification and stale lease are rejected',()=>{
    assert.throws(()=>db.succeed(spec,a.owner,spec.inputHash,2002),/ownership/);
  }finally{db.close();}
 });
+
+ test('transient provider/worker failures are retryable but validation and rights errors are not',()=>{
+  assert.equal(isRetryableJobError(Object.assign(new Error('network unavailable'),{code:'ECONNRESET'})),true);
+  assert.equal(isRetryableJobError(new Error('YouTube API HTTP 429: quota exceeded')),true);
+  assert.equal(isRetryableJobError(new Error('renderer timed out')),true);
+  assert.equal(isRetryableJobError(new Error('Asset hash mismatch')),false);
+  assert.equal(isRetryableJobError(new Error('invalid schema')),false);
+  assert.equal(isRetryableJobError(new Error('HTTP 403 invalid rights')),false);
+ });

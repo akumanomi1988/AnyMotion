@@ -55,7 +55,7 @@ jobs:
         run: npm run doctor
       - name: Render and mux bilingual technical preview
         if: steps.capabilities.outputs.media_ready == 'true'
-        run: npm run pipeline:preview
+        run: npm run pipeline:preview -- --sound-design examples/pilot.sound-design.json
       - name: Verify H.264/AAC, duration and artifacts
         if: steps.capabilities.outputs.media_ready == 'true'
         run: |
@@ -67,6 +67,10 @@ jobs:
           done
           test -s productions/EP0001/release_preview.json
           test -s productions/EP0001/timeline.json
+          test -s productions/EP0001/audio/sound-manifest.json
+          test -s productions/EP0001/audio/sound-design.json
+          test -s productions/EP0001/audio/music.wav
+          test -s productions/EP0001/audio/sfx.wav
       - name: Idempotent replay
         if: steps.capabilities.outputs.media_ready == 'true'
-        run: npm run pipeline:preview
+        run: npm run pipeline:preview -- --sound-design examples/pilot.sound-design.json

@@ -14,7 +14,7 @@ import { renderSvgFrame } from './renderer/scene.js';
 import { dubEpisode, muxDubbedVideo, sourceLocalization, runTool, type Locale } from './audio/dubbing.js';
 import { configuredHttpTts } from './audio/tts-http.js';
 import { packageEpisode } from './production/package.js';
-import { ProductionJobStore, type JobSpec } from './production/jobs.js';
+import { ProductionJobStore, isRetryableJobError, type JobSpec } from './production/jobs.js';
 import { generateDraftFile, OpenAICompatibleStoryProvider, validateStoryBrief } from './story/llm.js';
 import { prepareEpisodeDrafts } from './production/autopilot.js';
 import { freezeTimeline } from './timeline/freeze.js';
@@ -167,7 +167,7 @@ async function localizationFile(episode: Episode,locale: Locale,filename?:string
 }
 
 async function executeStage<T>(db: ProductionJobStore, spec:JobSpec, work:()=>Promise<T>, outputHash:(value:T)=>Promise<string>):Promise<T>{
-  const leaseMs=30*60_000;
+  const leaseMs=90_000;
   const claimed=db.claim(spec,leaseMs);
   if(!claimed){
     const existing=db.get(spec);
@@ -176,14 +176,14 @@ async function executeStage<T>(db: ProductionJobStore, spec:JobSpec, work:()=>Pr
     return work();
   }
   let leaseLost=false;
-  const heartbeat=setInterval(()=>{try{if(!db.heartbeat(spec,claimed.owner,leaseMs))leaseLost=true;}catch{leaseLost=true;}},60_000);
+  const heartbeat=setInterval(()=>{try{if(!db.heartbeat(spec,claimed.owner,leaseMs))leaseLost=true;}catch{leaseLost=true;}},15_000);
   heartbeat.unref();
   try{
     const result=await work();
     if(leaseLost)throw new Error('Job lease was lost during stage execution');
     db.succeed(spec,claimed.owner,await outputHash(result));
     return result;
-  }catch(error){if(!leaseLost)db.fail(spec,claimed.owner,error instanceof Error?error.message:String(error),false);throw error;}
+  }catch(error){if(!leaseLost)db.fail(spec,claimed.owner,error instanceof Error?error.message:String(error),isRetryableJobError(error));throw error;}
   finally{clearInterval(heartbeat);}
 }
 

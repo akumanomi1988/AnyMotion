@@ -209,3 +209,20 @@ ANYMOTION_TEST_VOICE=synthetic npm run pipeline:preview -- --sound-design exampl
 ```
 
 La voz `synthetic` **solo sirve para pruebas técnicas**, no para contenidos publicables. La composición sonora generada es una muestra funcional, no una validación de música comercial ni de mezcla profesional. Para un episodio nuevo, crear un archivo `*.sound-design.json` con los cues musicales y efectos aprobados, antes de producir los doblajes. No deben mezclarse pistas musicales con licencias desconocidas.
+
+
+## Rendimiento: diálogo PCM directo y recuperación
+
+Las réplicas WAV **PCM16 mono de 24 kHz** se leen con un analizador RIFF estricto, evitando una invocación a FFprobe y otra a FFmpeg por cada frase si no requieren time-stretch ni remuestreo. Otros formatos/frecuencias o ajustes de tempo siguen utilizando FFmpeg. Los WAV corruptos se bloquean; no se presume que todo archivo con extensión `.wav` sea compatible.
+
+Los trabajos de orquestación usan leases de 90 segundos y heartbeats cada 15 segundos, de modo que un proceso interrumpido puede recuperar su lease caducado. Solo errores transitorios identificables pueden pasar a `RETRYABLE_FAILED`; errores de esquema, integridad y derechos permanecen bloqueantes.
+
+Para reproducir la prueba de nueve minutos con **180 intervenciones diagnósticas** y una banda sonora original de prueba:
+
+```bash
+npm run build
+# En un workspace limpio; NO usar este fixture como publicación comercial
+ANYMOTION_TEST_VOICE=synthetic npm run pipeline:episode2:sound
+```
+
+Comprobación observada en Linux (11/11/2026): dos MP4 H.264/AAC de 540.000 segundos, 90 líneas de voz por locale, 10 escenas, una sola imagen maestra, 206 artefactos con hashes, y reejecución sin duplicación. La voz es un tono sintético, no español ni inglés hablado. El episodio sigue pendiente de revisión artística y editorial.

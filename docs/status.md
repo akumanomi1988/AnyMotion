@@ -95,3 +95,12 @@ Critical remaining work: Remotion versus Motion Canvas choice and licensing, act
 - Dubbing now exports dialogue and full mix separately, with SFX/music identical across locales and sound manifest dependency stored in the dub manifest. Mix clipping triggers a hard error.
 - The package and editorial release verification bind soundtrack stems and source design. Missing or added sound files after packaging fail validation.
 - Verified in isolated Linux tests with 58 passing assertions; an end-to-end bilingual preview with synthetic diagnostic voice has been exercised. Production TTS, soundtrack artistic acceptance and hardware/Windows benchmarking remain OPEN.
+
+
+## Iteración 15 — Long-form sound & recoverability benchmark
+
+- The 540-second original scripted EP0002 draft now has a versioned independent sound design (`examples/episode-0002.sound-design.json`) with original procedural sound cues, intro and outro.
+- Production of the nine-minute episode previously exceeded the execution limit because each of 180 WAV clips triggered external probing and re-encoding. This was a genuine observed throughput bug, not proof of bad hardware.
+- The speech engine now strictly parses RIFF PCM16 mono WAV, reading sample rate/duration in process and bypassing FFmpeg for compatible 24kHz clips without tempo change. FFmpeg remains the fallback for other rates and tempo stretching.
+- Job leases now expire after 90 seconds with heartbeat every 15 seconds; classified transient failures can be retried while validation/licensing/integrity errors block.
+- Clean Linux end-to-end run produced 540s H.264/AAC es-ES/en-US MP4s, 90 synthetic tone clips per locale, shared original music/SFX, 206 release artifacts and successful replay. Synthetic diagnostics are NEVER commercial audio/actual speech. `npm test`: 61 tests PASS. External LLM/TTS, Windows media run, final art, real YouTube OAuth, and commercial pilot remain OPEN.

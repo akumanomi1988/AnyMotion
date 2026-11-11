@@ -4,6 +4,14 @@ import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 
+/** Retry transient infrastructure/provider failures, never schema, media integrity or rights errors. */
+export function isRetryableJobError(error:unknown):boolean{
+  const code=(error && typeof error==='object' && 'code' in error)?String((error as {code?:unknown}).code):'';
+  if(['ETIMEDOUT','ECONNRESET','ECONNREFUSED','EAI_AGAIN','ENETUNREACH','EPIPE'].includes(code))return true;
+  const message=error instanceof Error?error.message:String(error);
+  return /\bHTTP (?:408|425|429|500|502|503|504)\b|(?:request|provider|render(?:er)?|ffmpeg) timed out|\btemporary (?:failure|outage)\b/i.test(message);
+}
+
 export type JobStage = 'STORY' | 'TIMING' | 'RENDER' | 'LOCALIZE' | 'DUB' | 'MUX' | 'QA' | 'PACKAGE';
 export type JobStatus = 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'RETRYABLE_FAILED' | 'BLOCKED';
 export interface JobRecord {
