@@ -28,6 +28,9 @@
     "pipeline:episode2:sound": "node dist/cli.js pipeline examples/episode-0002-editorial-draft.json --preset preview --translation-en examples/episode-0002.en-US-editorial-draft.json --sound-design examples/episode-0002.sound-design.json",
     "pipeline:episode2": "node dist/cli.js pipeline examples/episode-0002-editorial-draft.json --preset preview --translation-en examples/episode-0002.en-US-editorial-draft.json"
   },
+  "dependencies": {
+    "sharp": "0.34.1"
+  },
   "devDependencies": {
     "@types/node": "^22.15.0",
     "typescript": "^5.8.3"

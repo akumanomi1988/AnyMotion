@@ -26,7 +26,7 @@ jobs:
       - run: npm test
 
   media-integration:
-    name: media-integration (skips without native tools)
+    name: media-integration (required)
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
@@ -38,26 +38,18 @@ jobs:
           node-version: '22'
       - run: npm install --no-audit --no-fund
       - run: npm test
-      - id: capabilities
-        name: Inspect native dependencies (never hide unavailable integration coverage)
+      - name: Require native video dependencies (never skip media QA)
         shell: bash
         run: |
-          if command -v ffmpeg >/dev/null 2>&1 && command -v ffprobe >/dev/null 2>&1 \
-            && ffmpeg -hide_banner -decoders 2>&1 | grep -q librsvg \
-            && ffmpeg -hide_banner -encoders 2>&1 | grep -q libx264; then
-            echo 'media_ready=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'media_ready=false' >> "$GITHUB_OUTPUT"
-            echo '::warning::Media integration NOT VERIFIED on this runner: FFmpeg, FFprobe, librsvg or libx264 missing. Windows/Linux contract tests still run; reproduce multimedia integration on a tool-equipped runner.'
-          fi
+          command -v ffmpeg
+          command -v ffprobe
+          ffmpeg -hide_banner -encoders 2>&1 | grep -q libx264
+          node -e "const s=require('sharp'); if(!s.versions.vips)process.exit(1)"
       - name: Validate actual media tools
-        if: steps.capabilities.outputs.media_ready == 'true'
         run: npm run doctor
       - name: Render and mux bilingual technical preview
-        if: steps.capabilities.outputs.media_ready == 'true'
         run: npm run pipeline:preview -- --sound-design examples/pilot.sound-design.json
       - name: Verify H.264/AAC, duration and artifacts
-        if: steps.capabilities.outputs.media_ready == 'true'
         run: |
           for lang in es-ES en-US; do
             file="productions/EP0001/locales/$lang/final_preview.mp4"
@@ -72,5 +64,4 @@ jobs:
           test -s productions/EP0001/audio/music.wav
           test -s productions/EP0001/audio/sfx.wav
       - name: Idempotent replay
-        if: steps.capabilities.outputs.media_ready == 'true'
         run: npm run pipeline:preview -- --sound-design examples/pilot.sound-design.json

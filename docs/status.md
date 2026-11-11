@@ -135,3 +135,11 @@ Critical remaining work: Remotion versus Motion Canvas choice and licensing, act
 ### Evidencia adicional F1/F3 full HD (iteración 18)
 
 En una ejecución local Linux con `ANYMOTION_TEST_VOICE=synthetic`, `pipeline:final` generó 2.340 fotogramas del maestro a 1920×1080/30 FPS. La primera invocación se interrumpió tras producir el máster y el audio español; el siguiente intento comprobó y recuperó los artefactos, completando el paquete bilingüe. FFprobe validó **dos MP4 H.264 + AAC de 78.000 s, 1920×1080 y 30/1 FPS** y `release_final.json`. Este resultado NO acredita voces expresivas, calidad artística, un vídeo de nueve minutos a 1080p ni render Windows. La interrupción dejó un archivo MP4 temporal huérfano, pendiente de una política de limpieza segura.
+
+
+## Iteración 19 — Rasterización multiplataforma (validación parcial)
+
+- Incorporado Sharp 0.34.1 (licencia Apache-2.0 del proyecto; revisar también dependencias transitivas según distribución) para convertir SVG generado por código a PNG. Se elimina la dependencia obligatoria de `librsvg` en FFmpeg; `libx264` y FFprobe siguen siendo necesarios.
+- Un pipeline limpio Linux con `sharp-png-v1` generó **936 frames**, MP4 H.264/AAC español e inglés de **78.000 s exactos** a 640×360/12 FPS, con checksum y entrega técnica. La antigua secuencia SVG/FFmpeg se conserva solo como fallback explícito.
+- El verificador de máster impide cambiar de backend y reutilizar silenciosamente un MP4 anterior. CI multimedia se convierte en requisito (no se omite por falta de dependencias).
+- **Pendiente:** validar de verdad Sharp+FFmpeg a 1080p/30 FPS en Windows y, separadamente, la calidad artística. No declarar F0 final por cambiar el rasterizador.

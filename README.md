@@ -138,7 +138,7 @@ This cannot be performed with the diagnostic example. Only a private YouTube vid
 
 ### Implementation caveats
 
-On Windows, the pure Node contract/unit tests run with Node 22. Media rendering still requires a compatible `ffmpeg` build with the SVG decoder (`librsvg`), and the Windows 1080p/30fps pipeline must be benchmarked on the target computer. Node 22 `node:sqlite` is still experimental in this environment. Read `docs/status.md` before treating a feature as production-ready.
+On Windows, the pure Node contract/unit tests run with Node 22. Media rendering now uses Sharp for SVG → PNG by default (cross-platform Node native package) and FFmpeg for PNG → H.264; `librsvg` in FFmpeg is no longer required. The Windows 1080p/30fps pipeline must still be benchmarked on the target computer. Node 22 `node:sqlite` is still experimental in this environment. Read `docs/status.md` before treating a feature as production-ready.
 
 
 ## Editorial assessment and safe scheduled publishing (F5 extension)
@@ -270,3 +270,10 @@ node dist/cli.js autopilot examples/story-brief.json --confirm GENERATE_PREVIEW:
 Both the staged provider and the downstream dubbing remain unverified against a real paid LLM and commercial-grade expressive TTS. Automatic publishing is still prohibited.
 
 Full-HD technical validation (Linux, 11 November 2026): the 78-second pilot has been rendered at 1920×1080/30fps with one silent master and two localized H.264/AAC MP4s of exactly 78.000 seconds, verified by FFprobe and release packaging. The interrupted first attempt recovered on a subsequent pipeline invocation. This **does not certify final-quality acting, nine-minute final render throughput, commercial voices, Windows media, or YouTube access**.
+
+
+### Iteración 19 — Cross-platform rasterizer
+
+`sharp@0.34.1` rasterizes renderer-generated SVG to PNG frames with fixed dimensions. FFmpeg only needs ordinary PNG input, FFprobe, and libx264, avoiding the nonstandard `librsvg` decoder dependency that blocked media CI/Windows builds. `ANYMOTION_RENDER_BACKEND=ffmpeg-svg` is a reversible legacy fallback, but **existing masters are bound to their backend**: changing backend requires archiving and regenerating the visual release, never silently reusing old bytes.
+
+The clean Linux Sharp pipeline generated a 78-second bilingual H.264/AAC MP4 at 640×360/12 FPS. The repository CI now treats multimedia integration as mandatory on Ubuntu instead of reporting green while silently skipping it; Windows runs native Sharp raster contract tests but still requires FFmpeg end-to-end verification.
