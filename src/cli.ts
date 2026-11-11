@@ -256,16 +256,18 @@ async function main(): Promise<void> {
   }
   if(command==='youtube-thumbnail'){
     const o=parseArgs(args,['--confirm']);
+    if(o['--confirm']!==`UPLOAD_THUMBNAIL:${episode.episodeId}`)throw new Error('Explicit thumbnail confirmation required before OAuth');
     const token=await acquireYouTubeAccessToken(credentialsFromEnvironment());
-    const result=await uploadApprovedThumbnail({episode,accessToken:token,confirm:o['--confirm']??''});
+    const result=await uploadApprovedThumbnail({episode,accessToken:token,confirm:o['--confirm']});
     console.log(`THUMBNAIL_UPLOADED ${result.episodeId} for private video ${result.videoId}`);return;
   }
   if(command==='youtube-private'){
     const o=parseArgs(args,['--metadata','--confirm']);
+    if(o['--confirm']!==`UPLOAD_PRIVATE:${episode.episodeId}`)throw new Error('Explicit private-upload confirmation required before OAuth');
     if(!o['--metadata'])throw new Error('Upload requires an explicit --metadata JSON file');
-    const token=await acquireYouTubeAccessToken(credentialsFromEnvironment());
     const metadata=validateVideoMetadata(JSON.parse(await readFile(resolve(ROOT,o['--metadata']),'utf8')) as unknown);
-    const result=await uploadPrivateVideo({episode,metadata,accessToken:token,confirm:o['--confirm']??''});
+    const token=await acquireYouTubeAccessToken(credentialsFromEnvironment());
+    const result=await uploadPrivateVideo({episode,metadata,accessToken:token,confirm:o['--confirm']});
     console.log(`PRIVATE_UPLOADED ${result.videoId}; no public publication was requested.`);return;
   }
   if(command==='jobs'){

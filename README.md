@@ -193,3 +193,24 @@ node dist/cli.js youtube-thumbnail examples/my-approved-episode.json \
 El comando verifica el `editorial-approval.json` de la revisión final, el recibo de subida privada, el SHA-256 y las dimensiones del PNG. Comprueba que YouTube sigue mostrando el vídeo como privado antes y después del cambio. No modifica título, visibilidad ni fecha de publicación. Registra un recibo idempotente en `publication/youtube-thumbnail.json` y, si la carga falla, deja el error visible. Requiere un token OAuth válido: las pruebas usan HTTP simulado y **no acreditan funcionamiento con un canal real**.
 
 La API `thumbnails.set` solo establece la miniatura predeterminada; las miniaturas localizadas y pistas de doblaje quedan fuera de esta implementación hasta verificar funciones del canal en Studio. Documentación oficial: https://developers.google.com/youtube/data/reference/rest/v3/thumbnails/set
+
+### Metadatos multilingües en un único vídeo
+
+Puedes añadir opcionalmente un objeto `localizations` en el JSON de metadatos privado, usando códigos BCP-47 y títulos/descripciones adaptados. El `snippet` principal se mantiene en español (`es-ES`); el adaptador añade `part=localizations` solo cuando se han proporcionado traducciones válidas:
+
+```json
+{
+  "title": "El cajón de todo · Sitcom animada",
+  "description": "Episodio original sobre una pareja y el cajón doméstico que nunca permanece organizado.",
+  "categoryId": "24",
+  "madeForKids": false,
+  "localizations": {
+    "en-US": {
+      "title": "The Everything Drawer · Animated Sitcom",
+      "description": "An original animated episode about a couple, an ordinary drawer, and an excessively ambitious organization system."
+    }
+  }
+}
+```
+
+Para evitar llamadas OAuth accidentales, las órdenes `youtube-private` y `youtube-thumbnail` rechazan confirmaciones incorrectas **antes** de solicitar un token al proveedor.
