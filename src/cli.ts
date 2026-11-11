@@ -14,6 +14,8 @@ import { dubEpisode, muxDubbedVideo, sourceLocalization, type Locale } from './a
 import { packageEpisode } from './production/package.js';
 import { ProductionJobStore, type JobSpec } from './production/jobs.js';
 import { generateDraftFile } from './story/llm.js';
+import { freezeTimeline } from './timeline/freeze.js';
+import { generateLocalizationFile } from './story/localizer.js';
 
 const ROOT = resolve(process.cwd());
 const TEMP_ROOT = resolve(ROOT, 'workspace', 'temp');
@@ -166,7 +168,7 @@ async function executeStage<T>(db: ProductionJobStore, spec:JobSpec, work:()=>Pr
 async function main(): Promise<void> {
   const [command, file, ...args] = process.argv.slice(2);
   if (command === 'doctor') return doctor();
-  if (!command || !['validate','subtitles','render','dub','mux','package','pipeline','jobs','generate'].includes(command) || !file) {
+  if (!command || !['validate','subtitles','render','dub','mux','package','pipeline','jobs','generate','localize'].includes(command) || !file) {
     console.log(`Usage:
   node dist/cli.js doctor
   node dist/cli.js validate examples/pilot.json
@@ -176,8 +178,15 @@ async function main(): Promise<void> {
   node dist/cli.js mux examples/pilot.json --locale es-ES|en-US --preset preview|final
   node dist/cli.js pipeline examples/pilot.json --preset preview|final --translation-en examples/pilot.en-US.json
   node dist/cli.js jobs examples/pilot.json
-  node dist/cli.js generate examples/story-brief.json --out examples/new-episode.json`);
+  node dist/cli.js generate examples/story-brief.json --out examples/new-episode.json
+  node dist/cli.js localize examples/pilot.json --locale en-US --out examples/EP0001.en-US.draft.json`);
     process.exitCode = 2; return;
+  }
+  if(command==='localize'){
+    const o=parseArgs(args,['--locale','--out']);
+    if(o['--locale']!=='en-US'||!o['--out'])throw new Error('localize needs --locale en-US --out path');
+    const result=await generateLocalizationFile(file,'en-US',o['--out']);
+    console.log(`LOCALIZATION_DRAFT ${result.episodeId}: ${Object.keys(result.lines).length} lines. Human review required.`);return;
   }
   if(command==='generate') {
     const o=parseArgs(args,['--out']);
@@ -224,6 +233,11 @@ async function main(): Promise<void> {
     const db=new ProductionJobStore(join(ROOT,'workspace','jobs.sqlite'));
     const inputHash=createHash('sha256').update(JSON.stringify(episode)).digest('hex');
     try {
+      // Measure the original-language voice and freeze the canonical timeline BEFORE rendering any picture.
+      const esHash=createHash('sha256').update(inputHash+JSON.stringify(source)).digest('hex');
+      const esSpec:JobSpec={episodeId:episode.episodeId,stage:'DUB',locale:'es-ES',inputHash:esHash};
+      const spanish=await executeStage(db,esSpec,()=>dubEpisode(episode,source,'es-ES'),async m=>createHash('sha256').update(JSON.stringify(m)).digest('hex'));
+      await freezeTimeline(episode,spanish);
       const master=join(outputFolder(episode,o['--preset']),'silent.mp4');
       if(!(await stat(master).then(()=>true,()=>false))) {
         const spec:JobSpec={episodeId:episode.episodeId,stage:'RENDER',inputHash:createHash('sha256').update(inputHash+o['--preset']).digest('hex')};
@@ -231,8 +245,10 @@ async function main(): Promise<void> {
       }
       for(const [locale,localized] of [['es-ES',source],['en-US',english]] as const){
         const dubHash=createHash('sha256').update(inputHash+JSON.stringify(localized)).digest('hex');
-        const dubSpec:JobSpec={episodeId:episode.episodeId,stage:'DUB',locale,inputHash:dubHash};
-        await executeStage(db,dubSpec,()=>dubEpisode(episode,localized,locale),async m=>createHash('sha256').update(JSON.stringify(m)).digest('hex'));
+        if(locale==='en-US'){
+          const dubSpec:JobSpec={episodeId:episode.episodeId,stage:'DUB',locale,inputHash:dubHash};
+          await executeStage(db,dubSpec,()=>dubEpisode(episode,localized,locale),async m=>createHash('sha256').update(JSON.stringify(m)).digest('hex'));
+        }
         const muxSpec:JobSpec={episodeId:episode.episodeId,stage:'MUX',locale,inputHash:dubHash};
         await executeStage(db,muxSpec,()=>muxDubbedVideo(episode,locale,o['--preset'] as 'preview'|'final'),sha256);
       }

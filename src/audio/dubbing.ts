@@ -128,6 +128,7 @@ export async function dubEpisode(episodeInput: Episode, localizationInput: unkno
         const mixed = Math.max(-32768, Math.min(32767, audio.readInt16LE(dest) + sample));
         audio.writeInt16LE(mixed, dest);
       }
+      await rm(pcm,{force:true}); // PCM is a scratch intermediate; keep the source WAV for selective regeneration.
       clips.push({lineId:line.lineId, characterId:line.characterId, sourceDurationMs:duration, fittedDurationMs:Math.round(samples * 1000 / SAMPLE_RATE), windowMs:allowedMs, speakingRate, tempo:Number(tempo.toFixed(5)), clipped:false});
       rendered.push({...line, text});
     }
@@ -136,7 +137,7 @@ export async function dubEpisode(episodeInput: Episode, localizationInput: unkno
     for (const actor of ['vera', 'leo'] as const) await writeFile(join(tmp, `${actor}.srt`), serializeSrt(rendered.filter(line => line.characterId === actor)));
     await writeFile(join(tmp, 'combined.srt'), serializeSrt(rendered, true));
     await writeFile(join(tmp, 'speech-fit-report.json'), JSON.stringify({schemaVersion:'1.0', provider:'espeak-diagnostic', locale, clips}, null, 2)+'\n');
-    const fileNames = ['dialogue.wav','full_audio.wav','vera.srt','leo.srt','combined.srt','speech-fit-report.json'];
+    const fileNames = ['dialogue.wav','full_audio.wav','vera.srt','leo.srt','combined.srt','speech-fit-report.json',...clips.map(c=>`${c.lineId}.wav`)];
     const files: Record<string,string> = {};
     for (const name of fileNames) files[name] = hash(await readFile(join(tmp, name)));
     const manifest: DubManifest = {schemaVersion:'1.0',status:'LOCALIZED',episodeId:episode.episodeId,locale, provider:'espeak-diagnostic', timelineSha256:jsonDigest,localizationSha256:localeDigest,clips,files};

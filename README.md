@@ -6,11 +6,11 @@
 
 - Contratos validados, cronología absoluta en milisegundos, IDs de réplica estables, y SRT por personaje y combinado.
 - Renderer SVG/FFmpeg reproducible con **dos personajes** y **tres fondos domésticos** (salón, cocina, dormitorio); cámara, gestos y expresiones.
-- Render maestro H.264 sin audio, previews y manifiesto con SHA-256 y FFprobe.
+- Voz de referencia es-ES medida antes de congelar `timeline.json`; render maestro H.264 silencioso, previews y manifiestos SHA-256/FFprobe.
 - Doblaje real por réplica con voz **eSpeak solo para diagnóstico**, voces distintas, `speech-fit-report`, adaptación en-US mediante texto explícito, rechazo de frases que no caben y montaje de vídeo sin rerenderizar planos.
 - Persistencia SQLite local de trabajos, claims atómicos, leases y reintentos limitados. La API integrada `node:sqlite` está **marcada experimental en Node 22**: evaluar sustitución por un driver estable antes de cargas de producción críticas.
 - Pipeline de prueba idempotente con verificación de integridad y paquete etiquetado `TECHNICAL_PASS_EDITORIAL_PENDING`. Prohibida la publicación automática.
-- Adaptador de LLM **opcional** de API compatible con OpenAI; solo genera borradores JSON que pasan validación estricta y barreras de duración. No hay garantía automática de comicidad, originalidad ni calidad editorial.
+- Adaptadores de LLM **opcionales** de API compatible con OpenAI: borradores JSON de guion con límites de 8–10 minutos y adaptación cultural en-US con IDs de diálogo inmutables; ambos necesitan revisión humana. No hay garantía automática de comicidad, originalidad ni calidad editorial.
 
 ## Instalación
 
@@ -47,7 +47,12 @@ Definir explícitamente las variables `ANYMOTION_LLM_ENDPOINT`, `ANYMOTION_LLM_M
 node dist/cli.js generate examples/story-brief.json --out examples/EP0002.generated.json
 ```
 
-El resultado se valida como episodio de **8–10 minutos** y permanece en estado **DRAFT**. Su historia, expresividad y adaptación deben aprobarse manualmente. El guion ficticio de EP0001 y la localización en inglés son *fixtures*, no evidencias de creatividad automática.
+El resultado se valida como episodio de **8–10 minutos** y permanece en estado **DRAFT**. Para obtener una traducción propuesta y revisarla antes de doblar:
+
+```bash
+node dist/cli.js localize examples/pilot.json --locale en-US --out examples/pilot.en-US.draft.json
+```
+ Su historia, expresividad y adaptación deben aprobarse manualmente. El guion ficticio de EP0001 y la localización en inglés son *fixtures*, no evidencias de creatividad automática.
 
 ## Arquitectura
 
@@ -55,6 +60,7 @@ El resultado se valida como episodio de **8–10 minutos** y permanece en estado
 src/
   core/          contratos, timeline, rutas seguras, exportación SRT
   renderer/      SVG puro: personajes, escenarios, cámara y gestos
+  timeline/      congelación previa al render tras medición de voz es-ES
   audio/         doblaje temporal y mux a MP4
   production/    trabajos SQLite y packaging verificado
   story/         proveedor LLM compatible y QA estructural del borrador

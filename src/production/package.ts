@@ -4,6 +4,7 @@ import {createHash} from 'node:crypto';
 import {type Episode, validateEpisode} from '../core/contracts.js';
 import {withinRoot} from '../core/filenames.js';
 import type {Locale,DubManifest} from '../audio/dubbing.js';
+import type {FrozenTimeline} from '../timeline/freeze.js';
 
 export interface ReleaseManifest {
   schemaVersion:'1.0'; episodeId:string; preset:'preview'|'final'; locales:Locale[];
@@ -18,10 +19,13 @@ export async function packageEpisode(episodeInput:Episode,preset:'preview'|'fina
   if(!locales.length||new Set(locales).size!==locales.length)throw new Error('Localizations must be a unique nonempty list');
   const dir=withinRoot(root,join('productions',episode.episodeId));
   const masterDir=join(dir,preset);
+  const frozen=JSON.parse(await readFile(join(dir,'timeline.json'),'utf8')) as FrozenTimeline;
+  if(frozen.status!=='TIMELINE_FROZEN'||frozen.episodeHash!==sha(JSON.stringify(episode))||frozen.durationMs!==episode.durationMs)throw new Error('Source timeline not frozen or does not match episode');
   const masterManifest=JSON.parse(await readFile(join(masterDir,'manifest.json'),'utf8')) as {status:string;episodeId:string;sourceHash?:string;artifacts:{path:string;sha256:string}[]};
   const qa=JSON.parse(await readFile(join(masterDir,'quality-report.json'),'utf8')) as {technicalPass:boolean};
   if(masterManifest.status!=='MASTER_RENDERED'||masterManifest.episodeId!==episode.episodeId||masterManifest.sourceHash!==sha(JSON.stringify(episode))||qa.technicalPass!==true)throw new Error('Master QA has not passed');
   const hashes:Record<string,string>={};
+  hashes[join('productions',episode.episodeId,'timeline.json').replaceAll('\\','/')]=sha(await readFile(join(dir,'timeline.json')));
   for(const item of masterManifest.artifacts){
     const path=withinRoot(root,item.path);
     const bytes=await readFile(path);
