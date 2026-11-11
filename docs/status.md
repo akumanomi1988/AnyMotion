@@ -143,3 +143,6 @@ En una ejecución local Linux con `ANYMOTION_TEST_VOICE=synthetic`, `pipeline:fi
 - Un pipeline limpio Linux con `sharp-png-v1` generó **936 frames**, MP4 H.264/AAC español e inglés de **78.000 s exactos** a 640×360/12 FPS, con checksum y entrega técnica. La antigua secuencia SVG/FFmpeg se conserva solo como fallback explícito.
 - El verificador de máster impide cambiar de backend y reutilizar silenciosamente un MP4 anterior. CI multimedia se convierte en requisito (no se omite por falta de dependencias).
 - **Pendiente:** validar de verdad Sharp+FFmpeg a 1080p/30 FPS en Windows y, separadamente, la calidad artística. No declarar F0 final por cambiar el rasterizador.
+
+
+CI de la primera iteración Sharp: los contratos Ubuntu finalizaron PASS, mientras el job multimedia FAIL durante la comprobación de dependencias del runner; por tanto NO se declara CI completa verde en ese commit. Se fija después `ubuntu-24.04` para medios (frente a la migración variable de `ubuntu-latest`), se añade diagnóstico explícito y una instalación FFmpeg de tiempo acotado solamente si falta el ejecutable. El objetivo sigue siendo que la ejecución multimedia sea **obligatoria**, no que se omita.

@@ -27,7 +27,7 @@ jobs:
 
   media-integration:
     name: media-integration (required)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 12
     env:
       ANYMOTION_TEST_VOICE: synthetic
@@ -41,10 +41,15 @@ jobs:
       - name: Require native video dependencies (never skip media QA)
         shell: bash
         run: |
-          command -v ffmpeg
-          command -v ffprobe
-          ffmpeg -hide_banner -encoders 2>&1 | grep -q libx264
-          node -e "const s=require('sharp'); if(!s.versions.vips)process.exit(1)"
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            echo '::warning::Runner is missing FFmpeg; attempting a bounded native install'
+            sudo timeout 120 apt-get update -qq
+            sudo timeout 120 apt-get install -y -qq ffmpeg
+          fi
+          command -v ffmpeg || { echo '::error::FFmpeg missing'; exit 1; }
+          command -v ffprobe || { echo '::error::FFprobe missing'; exit 1; }
+          ffmpeg -hide_banner -encoders 2>&1 | grep 'libx264' >/dev/null || { echo '::error::libx264 encoder missing'; exit 1; }
+          node -e "const s=require('sharp'); if(!s.versions.vips)process.exit(1)" || { echo '::error::Sharp native runtime missing'; exit 1; }
       - name: Validate actual media tools
         run: npm run doctor
       - name: Render and mux bilingual technical preview
