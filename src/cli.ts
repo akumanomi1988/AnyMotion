@@ -11,9 +11,11 @@ import { frameCount } from './core/timing.js';
 import { withinRoot } from './core/filenames.js';
 import { renderSvgFrame } from './renderer/scene.js';
 import { dubEpisode, muxDubbedVideo, sourceLocalization, runTool, type Locale } from './audio/dubbing.js';
+import { configuredHttpTts } from './audio/tts-http.js';
 import { packageEpisode } from './production/package.js';
 import { ProductionJobStore, type JobSpec } from './production/jobs.js';
-import { generateDraftFile } from './story/llm.js';
+import { generateDraftFile, OpenAICompatibleStoryProvider, validateStoryBrief } from './story/llm.js';
+import { prepareEpisodeDrafts } from './production/autopilot.js';
 import { freezeTimeline } from './timeline/freeze.js';
 import { generateLocalizationFile } from './story/localizer.js';
 import { verifyMaster } from './production/master.js';
@@ -188,7 +190,7 @@ async function main(): Promise<void> {
     console.log(`AnyMotion Studio (solo lectura) http://127.0.0.1:${service.port}`);
     return;
   }
-  if (!command || !['validate','subtitles','render','dub','mux','package','pipeline','jobs','generate','localize','editorial-check','editorial-approve','youtube-private','backup','backup-verify','restore','thumbnail','youtube-thumbnail'].includes(command) || !file) {
+  if (!command || !['validate','subtitles','render','dub','mux','package','pipeline','jobs','generate','localize','editorial-check','editorial-approve','youtube-private','backup','backup-verify','restore','thumbnail','youtube-thumbnail','autopilot'].includes(command) || !file) {
     console.log(`Usage:
   node dist/cli.js doctor
   node dist/cli.js studio
@@ -207,6 +209,7 @@ async function main(): Promise<void> {
   node dist/cli.js editorial-check examples/pilot.json
   node dist/cli.js editorial-approve examples/pilot.json --reviewer Producer --notes-file review.txt --rights-confirmed yes --confirm APPROVE:EP0001
   node dist/cli.js youtube-private examples/pilot.json --metadata examples/youtube-metadata.example.json --confirm UPLOAD_PRIVATE:EP0001
+  node dist/cli.js autopilot examples/story-brief.json --confirm GENERATE_PREVIEW:EP0003
   node dist/cli.js thumbnail examples/pilot.json --frame-ms 35000
   node dist/cli.js youtube-thumbnail examples/pilot.json --confirm UPLOAD_THUMBNAIL:EP0001`);
     process.exitCode = 2; return;
@@ -216,6 +219,24 @@ async function main(): Promise<void> {
     if(o['--locale']!=='en-US'||!o['--out'])throw new Error('localize needs --locale en-US --out path');
     const result=await generateLocalizationFile(file,'en-US',o['--out']);
     console.log(`LOCALIZATION_DRAFT ${result.episodeId}: ${Object.keys(result.lines).length} lines. Human review required.`);return;
+  }
+  if(command==='autopilot'){
+    const o=parseArgs(args,['--confirm']);
+    const brief=validateStoryBrief(JSON.parse(await readFile(resolve(ROOT,file),'utf8')) as unknown);
+    if(o['--confirm']!==`GENERATE_PREVIEW:${brief.episodeId}`)throw new Error('Autopilot requires exact episode confirmation before LLM calls');
+    const model=process.env.ANYMOTION_LLM_MODEL,key=process.env.ANYMOTION_LLM_API_KEY,endpoint=process.env.ANYMOTION_LLM_ENDPOINT;
+    if(!model||!key||!endpoint)throw new Error('Autopilot requires LLM endpoint/model/key; no paid requests were made');
+    // Fail early on local media/TTS prerequisites rather than spending LLM tokens and then discovering a missing renderer.
+    await doctor();
+    if(process.env.ANYMOTION_TEST_VOICE!=='synthetic'&&!configuredHttpTts())
+      await runTool('espeak',['--version'],5000).catch(()=>{throw new Error('No configured HTTP TTS or eSpeak diagnostic tool; LLM calls were not made');});
+    const provider=new OpenAICompatibleStoryProvider({model,apiKey:key,endpoint});
+    const draft=await prepareEpisodeDrafts(brief,provider,ROOT);
+    console.log(`DRAFTS_READY ${brief.episodeId}; LLM calls this run: ${draft.llmCallsThisRun}; status EDITORIAL_PENDING`);
+    const log=await executable(process.execPath,[resolve(ROOT,'dist','cli.js'),'pipeline',draft.episodePath,'--preset','preview','--translation-en',draft.localizationPath]);
+    console.log(log);
+    console.log(`PREVIEW_READY ${brief.episodeId}; DIAGNOSTIC ONLY. Human script, art, voice and rights review needed.`);
+    return;
   }
   if(command==='generate') {
     const o=parseArgs(args,['--out']);

@@ -214,3 +214,21 @@ Puedes añadir opcionalmente un objeto `localizations` en el JSON de metadatos p
 ```
 
 Para evitar llamadas OAuth accidentales, las órdenes `youtube-private` y `youtube-thumbnail` rechazan confirmaciones incorrectas **antes** de solicitar un token al proveedor.
+
+### Autopilot: de una premisa al borrador audiovisual
+
+La opción `autopilot` encadena dos tareas LLM con salidas estrictamente validadas, la generación del episodio y su adaptación inglesa. Si los contratos son válidos, ejecuta el pipeline de **vista previa** (nunca publicación ni aprobación automática):
+
+```bash
+# Se requiere configurar ANYMOTION_LLM_ENDPOINT / ANYMOTION_LLM_MODEL / ANYMOTION_LLM_API_KEY
+# y el TTS de diagnóstico o ANYMOTION_TTS_*. Consulta .env.example.
+node dist/cli.js autopilot examples/story-brief.json \
+  --confirm GENERATE_PREVIEW:EP0003
+```
+
+- La orden realiza un preflight de FFmpeg, códecs y TTS **antes de las llamadas LLM**. No ejecuta el agente si faltan credenciales o la frase de autorización.
+- Al generar por primera vez consume hasta **dos solicitudes LLM** (una de guion y una de traducción); los límites de tokens están configurados por etapa. Un proveedor externo puede facturar esas solicitudes. No existe aún un cálculo fiable del coste en euros.
+- `workspace/drafts/<episodeId>/` almacena la petición, el JSON validado, traducción y hashes. Reanudar el mismo episodio no vuelve a gastar solicitudes si ambos archivos están íntegros; si cambian los datos, la ejecución se bloquea.
+- Si el texto no cabe en la ventana de habla o no cumple calidad técnica, falla con un diagnóstico, sin recortar la locución. Las correcciones editoriales y de prosodia aún requieren intervención. Solo produce un vídeo de prueba con estado `EDITORIAL_PENDING`.
+
+No se ha ejecutado contra un LLM real en esta entrega. Los tests utilizan proveedor simulado y la prueba técnica de nueve minutos **no representa una historia original apta para publicar**.
