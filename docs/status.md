@@ -2,15 +2,19 @@
 
 Date: 2026-11-11. The normative source requirements are `docs/master-blueprint.md` (copied from the project master DOCX). This is an **implementation** ledger, not permission to change the product vision.
 
-| Phase | Status | Verified evidence | Missing gate |
+| Phase | Estado actual | Evidencia | Condición pendiente |
 | --- | --- | --- | --- |
-| F0: identity / engine selection | PARTIAL | Original provisional SVG animation, FFmpeg render; concept and licensing reviewed in master spec | Side-by-side Remotion/Motion Canvas benchmark, approved art direction, Windows compatibility and final engine decision |
-| F1: executable short clip | PROTOTYPE COMPLETE | 78-second MP4 640×360 at 12 fps, 2 characters, camera cuts, gestural animation, split SRT, FFprobe and automated tests | Artistic approval and 60–90s commercial-quality acting |
-| F2: 8–10min autonomous story | PARTIAL | LLM JSON draft adapter and strict episode validator; 3 provisional sets | Model/provider QA, real 8–10min episode, narrative/editorial acceptance and controlled actions |
-| F3: dubbing and localization | DIAGNOSTIC PASS | Actual es-ES and en-US full-length audio & MP4 without re-rendering picture, source-voice check before frozen timeline, line-level reports | Expressive TTS, native language listening, source timing optimization and professional sound stems |
-| F4: autonomous operations | PARTIAL | SQLite job ledger, leases, idempotent bilingual pilot pipeline, release hashes and validated per-episode backup/restore | Stable database driver, realistic crash/restart testing, quotas and three distinct productions |
-| F5: YouTube integration | MOCK TESTS PASS (NO LIVE CHANNEL) | Explicit editorial signoff, voice allowlist, OAuth refresh, resumable private upload, remote privacy check and idempotent receipt under mock transport | Real OAuth/channel permissions, actual private upload, YouTube Studio audio tracks and operator acceptance |
-| F6: six-episode commercial pilot | NOT STARTED | No publication done | Six approved original episodes and measurable retention/cost data |
+| F0: identidad / elección de motor | PARTIAL | Render SVG/FFmpeg real y dirección artística provisional | Benchmark comparativo Remotion/Motion Canvas, identidad y licencias aprobadas |
+| F1: escena reproducible | TECHNICAL PASS | Clip 78 s, personajes, planos, SRT, MP4 H.264 verificado | Calidad artística comercial y Windows media |
+| F2: guion largo autónomo | PARTIAL | Adaptador LLM, generador por etapas, episodio **escrito manualmente** de 9 minutos, 10 escenas y 90 diálogos | Validar proveedor LLM real y calidad narrativa original en revisión humana |
+| F3: voz, música y localización | DIAGNOSTIC PASS | Dos MP4 bilingües 540 s, stems separados, voz de referencia medida, sin rerender | TTS expresivo, escucha real, adaptación cultural aprobada |
+| F4: operación recuperable | TECHNICAL PROTOTYPE | SQLite, leases, backoff semántico, hashes, reintentos, backup/restauración y replay | SQLite estable, Windows y tres producciones autónomas distintas |
+| F5: YouTube | MOCK PASS | OAuth, subida privada, miniatura, programación, kit Studio y bloqueo editorial con mocks | Canal/OAuth real, pistas multilingües, subida privada autorizada |
+| F6: piloto y negocio | ANALYTICS READY, PILOT NOT STARTED | Informe local de métricas con distinción observado/simulado | Seis episodios originales aprobados, audiencia e ingresos reales |
+
+**Última evidencia técnica (11/11/2026):** 64/64 pruebas locales; CI GitHub del commit anterior correcta; la nueva integración de audio de nueve minutos pasa y verifica 206 artefactos, dos MP4 H.264/AAC exactamente 540.000 s y reejecución idempotente. El doblaje de esa prueba utiliza **tonos sintéticos**, no voces habladas. La CI multimedia nativa puede omitirse si el runner carece de FFmpeg/librsvg; una CI verde no implica que ese paso se haya ejecutado.
+
+### Registro histórico de pruebas
 
 Local integration evidence: `npm test` passed 39 tests; two same-input pipeline executions passed with 78s H.264/AAC for both locales; 50 release artifacts and no automatic publication. A synthetic **9-minute** technical load fixture passed end-to-end for both languages with eSpeak diagnostic voice: 108 lines per locale, two 540.000 s H.264/AAC videos and no truncated clips. The 9-minute image render passed FFprobe: 6,480 preview frames, 540.000 s, H.264 640×360/12 fps, 16.8 seconds measured render in the current Linux test environment. This fixture is repetitive by design and explicitly NOT publishable. CI multimedia uses an explicit synthetic tone adapter and is **not** real-speech QA. The previous CI media job failed on the host package-install timeout (apt-get). The runner has no FFmpeg, and apt-get timed out. CI now reports an explicit warning and skips native media assertions when prerequisites are absent; do NOT report native CI multimedia as passed. Local full audio-video tests were separately verified on a tool-equipped Linux machine.
 
