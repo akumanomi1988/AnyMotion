@@ -12,7 +12,7 @@ Date: 2026-11-11. The normative source requirements are `docs/master-blueprint.m
 | F5: YouTube integration | NOT STARTED | Packaging forbids public release without editorial approval | OAuth, private API upload, channel verification, official localization workflow |
 | F6: six-episode commercial pilot | NOT STARTED | No publication done | Six approved original episodes and measurable retention/cost data |
 
-Local integration evidence: `npm test` passed 24 tests; two same-input pipeline executions passed with 78s H.264/AAC for both locales; 44 release artifacts and no automatic publication. A synthetic **9-minute** technical load fixture passed FFprobe: 6,480 preview frames, 540.000 s, H.264 640×360/12 fps, 16.8 seconds measured render in the current Linux test environment. This fixture is repetitive by design and explicitly NOT publishable. CI may be pending and must be checked independently.
+Local integration evidence: `npm test` passed 24 tests; two same-input pipeline executions passed with 78s H.264/AAC for both locales; 44 release artifacts and no automatic publication. A synthetic **9-minute** technical load fixture passed end-to-end for both languages with eSpeak diagnostic voice: 108 lines per locale, two 540.000 s H.264/AAC videos and no truncated clips. The 9-minute image render passed FFprobe: 6,480 preview frames, 540.000 s, H.264 640×360/12 fps, 16.8 seconds measured render in the current Linux test environment. This fixture is repetitive by design and explicitly NOT publishable. CI multimedia uses an explicit synthetic tone adapter and is **not** real-speech QA; check the latest GitHub Actions run separately.
 
 ## Known limitations and risks
 
@@ -21,3 +21,16 @@ Local integration evidence: `npm test` passed 24 tests; two same-input pipeline 
 - The current drafts still contain predicted dialogue intervals; TTS is checked before freezing, but a full semantic timeline planner is not implemented.
 - The SVG renderer proves deterministic video creation, not polished original comedy animation.
 - No paid API calls, YouTube publishing, licensing approvals or release permissions have been performed.
+
+## Incremental work: reliability and publishing safeguards
+
+Additional verified local capabilities:
+
+- Master re-use now checks source digest, artifact hashes and technical report. Stale generated artifacts trigger a block rather than silent continuation.
+- Job execution sends lease heartbeats while stages run, reducing the chance of duplicate claims for slow renders.
+- Configurable HTTPS or local OpenAI-compatible TTS endpoint, immutable voice/profile fingerprint and WAV checks. A real production-quality model has NOT been tested; eSpeak/synthetic are explicitly prohibited from editorial release.
+- Immutable editorial approval records bind a human note and commercial-rights confirmation to a verified, full-resolution release digest.
+- YouTube private-only resumable upload implementation, OAuth access/refresh support, remote private-status verification and replayable upload session; tested with mocked responses only. Publishing is blocked for unapproved episodes. Public scheduling, thumbnail upload and multi-audio Studio steps remain unimplemented.
+- Added unit tests for OAuth, TTS provider, master integrity, editorial approval and private-upload behavior; observed `npm test` result: **34 tests PASS** on Linux. A new clean 78-second bilingual preview has completed twice (first build and idempotent replay) with technical pass. Follow-up CI result remains pending until the new branch commit runs.
+
+Critical remaining work: Remotion versus Motion Canvas choice and licensing, actual authored character direction, genuinely original 8–10 minute narrative verified by a human, real natural-language TTS evaluation, automated rights-provenance ledger, localization review, disk backup/restore drills, production-ready SQLite dependency, YouTube OAuth/channel access and real API integration, branding and commercial six-episode pilot. **Current status is PARTIAL, not complete.**

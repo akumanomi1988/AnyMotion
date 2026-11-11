@@ -27,22 +27,20 @@ jobs:
   media-integration:
     runs-on: ubuntu-latest
     timeout-minutes: 12
+    env:
+      ANYMOTION_TEST_VOICE: synthetic
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install native media dependencies (bounded)
-        run: |
-          if ! command -v espeak >/dev/null || ! command -v ffmpeg >/dev/null; then
-            timeout 150s sudo apt-get update -qq
-            timeout 150s sudo apt-get install -y ffmpeg espeak
-          fi
+      - name: Use deterministic synthetic voice in CI only
+        run: echo "CI uses a synthetic audio fixture, never commercial speech synthesis"
       - run: npm install --no-audit --no-fund
       - run: npm test
       - run: npm run doctor
       - run: npm run pipeline:preview
-      - name: Verify bilingual H.264/AAC output
+      - name: Verify media pipeline with synthetic audio (NOT speech QA)
         run: |
           for lang in es-ES en-US; do
             file="productions/EP0001/locales/$lang/final_preview.mp4"

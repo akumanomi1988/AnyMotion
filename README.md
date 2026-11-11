@@ -77,6 +77,8 @@ productions/     artefactos versionados en disco (ignorados en Git)
 workspace/       SQLite y temporales (ignorados en Git)
 ```
 
+**CI note:** GitHub Actions runs the media pipeline with `ANYMOTION_TEST_VOICE=synthetic` to avoid network-installed voice dependencies; this generates a tone, not words, and is exclusively a test of routing, timing, encoders and manifests. Local eSpeak speech tests remain separate. Never use the synthetic setting to evaluate or publish episodes.
+
 ## Lo que falta para la visión comercial
 
 1. Aprobar arte final, comparar Remotion/Motion Canvas con el renderer actual y decidir motor definitivo con licencias comprobadas.
@@ -87,3 +89,53 @@ workspace/       SQLite y temporales (ignorados en Git)
 6. Producir seis episodios distintos y evaluar métricas reales antes de aumentar la cadencia.
 
 No considerar `TECHNICAL_PASS` equivalente a `EDITORIAL_APPROVED`, ni un episodio generado automáticamente equivalente a un episodio publicable.
+
+## F4/F5 hardening — new operator commands
+
+The project now includes additional **fail-closed** controls; they do not imply that real channel access, commercial sound, or editorial quality has been verified.
+
+- `pipeline:preview` verifies the hash and source revision of an existing master before reuse. It will **refuse** an old/stale master instead of silently skipping the render. It does not overwrite previously validated files.
+- A lease heartbeat protects long-running stage claims from concurrent reuse. Stages are only reusable after input/output verification.
+- `ANYMOTION_TTS_ENDPOINT`, `ANYMOTION_TTS_MODEL` and `ANYMOTION_TTS_VOICES` enable an OpenAI-compatible **WAV** TTS server (local loopback or HTTPS) with pinned voice IDs. The default eSpeak and `ANYMOTION_TEST_VOICE=synthetic` remain diagnostic only; neither may pass editorial approval. The new TTS adapter's protocol has unit tests, but no commercial voice has yet been auditioned.
+- A release can only be approved for publication with a **full** preset, matching SHA-256 artifact hashes, approved non-diagnostic provider IDs, a named reviewer, written review notes, an explicit rights assertion, and the exact phrase `APPROVE:<episodeId>`.
+- A YouTube video can only be uploaded as **private** using an explicitly confirmed `UPLOAD_PRIVATE:<episodeId>` command; the documented resumable API is used with an output/session record and remote verification. Upload is not enabled without valid OAuth credentials. No unattended public posting or scheduling exists yet.
+
+### Editorial verification
+
+```bash
+npm test
+node dist/cli.js editorial-check examples/pilot.json
+# Only AFTER a full commercial-quality episode is packaged and source rights are confirmed:
+node dist/cli.js editorial-approve examples/my-final-episode.json \
+  --reviewer "Original Creator" --notes-file review.txt \
+  --rights-confirmed yes --confirm APPROVE:EP0002
+```
+
+The current `EP0001` preview with eSpeak **must fail editorial approval**. This is deliberate.
+
+### Private upload (explicit authorization only)
+
+Prepare `metadata.json` locally with all mandatory classification fields:
+
+```json
+{
+  "title": "Episode title - Original animated sitcom",
+  "description": "Original independent animated sitcom episode. Characters and voices have been reviewed for release.",
+  "categoryId": "24",
+  "madeForKids": false,
+  "tags": ["animated sitcom", "original animation"]
+}
+```
+
+Set either `ANYMOTION_YOUTUBE_ACCESS_TOKEN` or all three `ANYMOTION_YOUTUBE_CLIENT_ID`, `ANYMOTION_YOUTUBE_CLIENT_SECRET`, `ANYMOTION_YOUTUBE_REFRESH_TOKEN` in the process environment (never in Git). Then explicitly run:
+
+```bash
+node dist/cli.js youtube-private examples/my-final-episode.json \
+  --metadata metadata.json --confirm UPLOAD_PRIVATE:EP0002
+```
+
+This cannot be performed with the diagnostic example. Only a private YouTube video is created; subsequent public scheduling, additional audio tracks and thumbnails require separate permissions and implementation/validation. No project credentials are included.
+
+### Implementation caveats
+
+On Windows, the pure Node contract/unit tests run with Node 22. Media rendering still requires a compatible `ffmpeg` build with the SVG decoder (`librsvg`), and the Windows 1080p/30fps pipeline must be benchmarked on the target computer. Node 22 `node:sqlite` is still experimental in this environment. Read `docs/status.md` before treating a feature as production-ready.

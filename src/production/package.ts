@@ -1,4 +1,5 @@
 import {readFile,writeFile,stat} from 'node:fs/promises';
+import {createReadStream} from 'node:fs';
 import {join,resolve} from 'node:path';
 import {createHash} from 'node:crypto';
 import {type Episode, validateEpisode} from '../core/contracts.js';
@@ -12,6 +13,7 @@ export interface ReleaseManifest {
   artifacts:Record<string,string>; createdAt:string;
 }
 const sha=(s:Buffer|string)=>createHash('sha256').update(s).digest('hex');
+async function shaFile(file:string){const d=createHash('sha256');for await(const b of createReadStream(file))d.update(b);return d.digest('hex');}
 
 /** Package only verified byte-addressed artifacts. Never auto-approve or publish. */
 export async function packageEpisode(episodeInput:Episode,preset:'preview'|'final',locales:Locale[],root=resolve(process.cwd())):Promise<ReleaseManifest>{
@@ -26,10 +28,11 @@ export async function packageEpisode(episodeInput:Episode,preset:'preview'|'fina
   if(masterManifest.status!=='MASTER_RENDERED'||masterManifest.episodeId!==episode.episodeId||masterManifest.sourceHash!==sha(JSON.stringify(episode))||qa.technicalPass!==true)throw new Error('Master QA has not passed');
   const hashes:Record<string,string>={};
   hashes[join('productions',episode.episodeId,'timeline.json').replaceAll('\\','/')]=sha(await readFile(join(dir,'timeline.json')));
+  for(const name of ['manifest.json','quality-report.json'])
+    hashes[join('productions',episode.episodeId,preset,name).replaceAll('\\','/')]=await shaFile(join(masterDir,name));
   for(const item of masterManifest.artifacts){
     const path=withinRoot(root,item.path);
-    const bytes=await readFile(path);
-    if(sha(bytes)!==item.sha256)throw new Error(`Master artifact hash mismatch: ${item.path}`);
+    if(await shaFile(path)!==item.sha256)throw new Error(`Master artifact hash mismatch: ${item.path}`);
     hashes[item.path]=item.sha256;
   }
   for(const locale of locales){
@@ -39,13 +42,16 @@ export async function packageEpisode(episodeInput:Episode,preset:'preview'|'fina
     if(dub.episodeId!==episode.episodeId||dub.locale!==locale||dub.status!=='LOCALIZED'||dub.timelineSha256!==sha(JSON.stringify(episode)))throw new Error(`Dub validation failed for ${locale}`);
     for(const [file,checksum] of Object.entries(dub.files)){
       const relative=join('productions',episode.episodeId,'locales',locale,file).replaceAll('\\','/');
-      if(sha(await readFile(join(folder,file)))!==checksum)throw new Error(`Dub hash mismatch ${relative}`);
+      if(await shaFile(join(folder,file))!==checksum)throw new Error(`Dub hash mismatch ${relative}`);
       hashes[relative]=checksum;
     }
-    const mux=JSON.parse(await readFile(join(folder,`mux_${preset}.json`),'utf8')) as {technicalPass:boolean;outputHash:string;durationMs:number};
+    const muxFile=join(folder,`mux_${preset}.json`);
+    const mux=JSON.parse(await readFile(muxFile,'utf8')) as {technicalPass:boolean;outputHash:string;durationMs:number};
     const name=`final_${preset}.mp4`;
-    if(!mux.technicalPass||mux.durationMs!==episode.durationMs||sha(await readFile(join(folder,name)))!==mux.outputHash)throw new Error(`Mux validation failed for ${locale}`);
+    if(!mux.technicalPass||mux.durationMs!==episode.durationMs||await shaFile(join(folder,name))!==mux.outputHash)throw new Error(`Mux validation failed for ${locale}`);
     hashes[join('productions',episode.episodeId,'locales',locale,name).replaceAll('\\','/')]=mux.outputHash;
+    hashes[join('productions',episode.episodeId,'locales',locale,'dub-manifest.json').replaceAll('\\','/')]=await shaFile(join(folder,'dub-manifest.json'));
+    hashes[join('productions',episode.episodeId,'locales',locale,`mux_${preset}.json`).replaceAll('\\','/')]=await shaFile(muxFile);
   }
   const out=join(dir,`release_${preset}.json`);
   const manifest:ReleaseManifest={schemaVersion:'1.0',episodeId:episode.episodeId,preset,locales,status:'TECHNICAL_PASS_EDITORIAL_PENDING',publicationAllowed:false,artifacts:hashes,createdAt:new Date().toISOString()};

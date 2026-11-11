@@ -10,12 +10,16 @@ import { createSubtitles } from './core/subtitles.js';
 import { frameCount } from './core/timing.js';
 import { withinRoot } from './core/filenames.js';
 import { renderSvgFrame } from './renderer/scene.js';
-import { dubEpisode, muxDubbedVideo, sourceLocalization, type Locale } from './audio/dubbing.js';
+import { dubEpisode, muxDubbedVideo, sourceLocalization, runTool, type Locale } from './audio/dubbing.js';
 import { packageEpisode } from './production/package.js';
 import { ProductionJobStore, type JobSpec } from './production/jobs.js';
 import { generateDraftFile } from './story/llm.js';
 import { freezeTimeline } from './timeline/freeze.js';
 import { generateLocalizationFile } from './story/localizer.js';
+import { verifyMaster } from './production/master.js';
+import { approveEditorial, verifyEditorialApproval, verifiedRelease } from './publishing/approval.js';
+import { uploadPrivateVideo, validateVideoMetadata } from './publishing/youtube.js';
+import {acquireYouTubeAccessToken,credentialsFromEnvironment} from './publishing/oauth.js';
 
 const ROOT = resolve(process.cwd());
 const TEMP_ROOT = resolve(ROOT, 'workspace', 'temp');
@@ -151,24 +155,30 @@ async function localizationFile(episode: Episode,locale: Locale,filename?:string
 }
 
 async function executeStage<T>(db: ProductionJobStore, spec:JobSpec, work:()=>Promise<T>, outputHash:(value:T)=>Promise<string>):Promise<T>{
-  const claimed=db.claim(spec,30*60_000);
+  const leaseMs=30*60_000;
+  const claimed=db.claim(spec,leaseMs);
   if(!claimed){
     const existing=db.get(spec);
     if(existing?.status!=='SUCCEEDED')throw new Error(`Stage ${spec.stage}/${spec.locale??''} is locked or blocked: ${existing?.status}`);
     // Re-run only idempotent verification paths, not the rendering itself.
     return work();
   }
+  let leaseLost=false;
+  const heartbeat=setInterval(()=>{try{if(!db.heartbeat(spec,claimed.owner,leaseMs))leaseLost=true;}catch{leaseLost=true;}},60_000);
+  heartbeat.unref();
   try{
     const result=await work();
+    if(leaseLost)throw new Error('Job lease was lost during stage execution');
     db.succeed(spec,claimed.owner,await outputHash(result));
     return result;
-  }catch(error){db.fail(spec,claimed.owner,error instanceof Error?error.message:String(error),false);throw error;}
+  }catch(error){if(!leaseLost)db.fail(spec,claimed.owner,error instanceof Error?error.message:String(error),false);throw error;}
+  finally{clearInterval(heartbeat);}
 }
 
 async function main(): Promise<void> {
   const [command, file, ...args] = process.argv.slice(2);
   if (command === 'doctor') return doctor();
-  if (!command || !['validate','subtitles','render','dub','mux','package','pipeline','jobs','generate','localize'].includes(command) || !file) {
+  if (!command || !['validate','subtitles','render','dub','mux','package','pipeline','jobs','generate','localize','editorial-check','editorial-approve','youtube-private'].includes(command) || !file) {
     console.log(`Usage:
   node dist/cli.js doctor
   node dist/cli.js validate examples/pilot.json
@@ -197,6 +207,26 @@ async function main(): Promise<void> {
   const episode = await loadEpisode(file);
   if (command === 'validate') { console.log(`PASS ${episode.episodeId}: ${episode.scenes.length} scenes, ${episode.durationMs}ms`); return; }
   if (command === 'subtitles') { const files = await exportSrt(episode); console.log(files.join('\n')); return; }
+  if(command==='editorial-check'){
+    const release=await verifiedRelease(episode,'final');
+    try{const approval=await verifyEditorialApproval(episode);console.log(JSON.stringify({releaseHash:release.sha256,status:approval.status},null,2));}
+    catch(e){console.log(JSON.stringify({releaseHash:release.sha256,status:'EDITORIAL_PENDING',blocker:e instanceof Error?e.message:String(e)},null,2));}
+    return;
+  }
+  if(command==='editorial-approve'){
+    const o=parseArgs(args,['--reviewer','--notes-file','--rights-confirmed','--confirm']);
+    if(!o['--notes-file'])throw new Error('Editorial approval requires --notes-file');
+    const decision=await approveEditorial(episode,{reviewer:o['--reviewer']??'',reviewNotes:await readFile(resolve(ROOT,o['--notes-file']),'utf8'),confirm:o['--confirm']??'',commercialRightsConfirmed:o['--rights-confirmed']==='yes'});
+    console.log(`EDITORIAL_APPROVED ${decision.episodeId} for release ${decision.releaseSha256}`);return;
+  }
+  if(command==='youtube-private'){
+    const o=parseArgs(args,['--metadata','--confirm']);
+    if(!o['--metadata'])throw new Error('Upload requires an explicit --metadata JSON file');
+    const token=await acquireYouTubeAccessToken(credentialsFromEnvironment());
+    const metadata=validateVideoMetadata(JSON.parse(await readFile(resolve(ROOT,o['--metadata']),'utf8')) as unknown);
+    const result=await uploadPrivateVideo({episode,metadata,accessToken:token,confirm:o['--confirm']??''});
+    console.log(`PRIVATE_UPLOADED ${result.videoId}; no public publication was requested.`);return;
+  }
   if(command==='jobs'){
     const db=new ProductionJobStore(join(ROOT,'workspace','jobs.sqlite'));
     try {console.log(JSON.stringify(db.list(episode.episodeId),null,2));}finally{db.close();}
@@ -228,6 +258,7 @@ async function main(): Promise<void> {
     const o=parseArgs(args,['--preset','--translation-en']);
     if(o['--preset']!=='preview'&&o['--preset']!=='final')throw new Error('pipeline needs --preset preview|final');
     if(!o['--translation-en'])throw new Error('pipeline requires --translation-en path');
+    if(process.env.ANYMOTION_TEST_VOICE!=='synthetic')await runTool('espeak',['--version'],5000).catch(()=>{throw new Error('eSpeak diagnostic TTS not available on PATH; install eSpeak before pipeline:preview');});
     const english=await localizationFile(episode,'en-US',o['--translation-en']);
     const source=sourceLocalization(episode);
     const db=new ProductionJobStore(join(ROOT,'workspace','jobs.sqlite'));
@@ -238,11 +269,14 @@ async function main(): Promise<void> {
       const esSpec:JobSpec={episodeId:episode.episodeId,stage:'DUB',locale:'es-ES',inputHash:esHash};
       const spanish=await executeStage(db,esSpec,()=>dubEpisode(episode,source,'es-ES'),async m=>createHash('sha256').update(JSON.stringify(m)).digest('hex'));
       await freezeTimeline(episode,spanish);
-      const master=join(outputFolder(episode,o['--preset']),'silent.mp4');
-      if(!(await stat(master).then(()=>true,()=>false))) {
-        const spec:JobSpec={episodeId:episode.episodeId,stage:'RENDER',inputHash:createHash('sha256').update(inputHash+o['--preset']).digest('hex')};
-        await executeStage(db,spec,async()=>{await render(episode,o['--preset'] as 'preview'|'final');return master;},sha256);
-      }
+      const chosenPreset=o['--preset'] as 'preview'|'final';
+      const master=join(outputFolder(episode,chosenPreset),'silent.mp4');
+      const spec:JobSpec={episodeId:episode.episodeId,stage:'RENDER',inputHash:createHash('sha256').update(inputHash+chosenPreset).digest('hex')};
+      await executeStage(db,spec,async()=>{
+        const existing=await stat(master).then(()=>true,(err:NodeJS.ErrnoException)=>{if(err.code==='ENOENT')return false;throw err;});
+        if(!existing)await render(episode,chosenPreset);
+        return verifyMaster(episode,chosenPreset);
+      },sha256);
       for(const [locale,localized] of [['es-ES',source],['en-US',english]] as const){
         const dubHash=createHash('sha256').update(inputHash+JSON.stringify(localized)).digest('hex');
         if(locale==='en-US'){
