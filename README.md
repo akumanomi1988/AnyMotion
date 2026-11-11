@@ -226,3 +226,16 @@ ANYMOTION_TEST_VOICE=synthetic npm run pipeline:episode2:sound
 ```
 
 Comprobación observada en Linux (11/11/2026): dos MP4 H.264/AAC de 540.000 segundos, 90 líneas de voz por locale, 10 escenas, una sola imagen maestra, 206 artefactos con hashes, y reejecución sin duplicación. La voz es un tono sintético, no español ni inglés hablado. El episodio sigue pendiente de revisión artística y editorial.
+
+
+## Negocio y análisis de audiencia (F6 — herramienta preparada, sin audiencia real)
+
+El análisis local `analytics` valida costes por etapa, visualizaciones, impresiones, CTR **reportado por YouTube**, duración vista, espectadores recurrentes, ingresos observados y consumo por idioma. Distingue `SIMULATED` de `OBSERVED`: los ejemplos no pueden atribuirse ingresos reales y los registros observados necesitan una referencia de exportación. El RPM se calcula **una sola vez** como ingresos observados / visualizaciones × 1000, si ambos existen. Nunca se presume aprobación de monetización, rendimiento adicional del doblaje ni decisión automática de escalar.
+
+```bash
+npm run build
+npm run analytics:simulated
+cat workspace/analytics-simulated-report.json
+```
+
+Reemplazar el ejemplo por métricas exportadas de YouTube Studio **solo después de publicar episodios reales**, aportando evidencia. La evaluación real del piloto de seis episodios sigue pendiente.

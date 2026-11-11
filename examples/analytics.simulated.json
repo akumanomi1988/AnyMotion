@@ -1,0 +1,13 @@
+{
+  "schemaVersion":"1.0","seriesId":"AnyMotionPilot",
+  "records":[
+    {
+      "episodeId":"EP0001","durationSeconds":540,"classification":"SIMULATED",
+      "dataThrough":"2026-11-11","evidenceReference":null,
+      "metrics":{"views":20000,"impressions":100000,"impressionsCtrPercent":4.8,
+        "watchTimeHours":1450,"uniqueViewers":15000,"returningViewers":2300,"estimatedRevenueEur":null,
+        "byLocale":[{"locale":"es-ES","views":11000},{"locale":"en-US","views":7000}]},
+      "costs":{"llmEur":2,"ttsEur":2,"renderEur":1,"storageEur":0.3,"licensesEur":1,"editorialEur":15,"overheadEur":2}
+    }
+  ]
+}

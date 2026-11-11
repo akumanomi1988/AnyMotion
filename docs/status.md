@@ -104,3 +104,11 @@ Critical remaining work: Remotion versus Motion Canvas choice and licensing, act
 - The speech engine now strictly parses RIFF PCM16 mono WAV, reading sample rate/duration in process and bypassing FFmpeg for compatible 24kHz clips without tempo change. FFmpeg remains the fallback for other rates and tempo stretching.
 - Job leases now expire after 90 seconds with heartbeat every 15 seconds; classified transient failures can be retried while validation/licensing/integrity errors block.
 - Clean Linux end-to-end run produced 540s H.264/AAC es-ES/en-US MP4s, 90 synthetic tone clips per locale, shared original music/SFX, 206 release artifacts and successful replay. Synthetic diagnostics are NEVER commercial audio/actual speech. `npm test`: 61 tests PASS. External LLM/TTS, Windows media run, final art, real YouTube OAuth, and commercial pilot remain OPEN.
+
+
+## Iteración 16 — Business/evidence report
+
+- An offline, typed, zero-credential analytics engine (`src/analytics/report.ts`) now accepts episode production costs and YouTube Studio statistics, with provenance classification OBSERVED/SIMULATED.
+- It calculates weighted platform-reported impression CTR, measured watch duration, episode cost, RPM (only for actual observed revenue), financial break-even views and locale coverage. Returning viewer ratio uses unique viewers when available.
+- It never declares SCALE/STOP from synthetic data, never estimates unobserved revenue and never attributes localized views to incremental dubbing revenue.
+- `node dist/cli.js analytics <input.json> --out <report.json>` produces an immutable JSON artifact; unit tests check validation, null economics, and sample calculations. Real channel metrics remain unavailable until the six-episode pilot.

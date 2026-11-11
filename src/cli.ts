@@ -32,6 +32,7 @@ import {analyzeEditorial} from './quality/editorial.js';
 import {createStagedStory} from './story/staged.js';
 import {startStagedProviderSession} from './story/checkpoints.js';
 import {createStudioKit} from './publishing/kit.js';
+import {analyzeBusiness} from './analytics/report.js';
 
 const ROOT = resolve(process.cwd());
 const TEMP_ROOT = resolve(ROOT, 'workspace', 'temp');
@@ -196,10 +197,11 @@ async function main(): Promise<void> {
     console.log(`AnyMotion Studio (solo lectura) http://127.0.0.1:${service.port}`);
     return;
   }
-  if (!command || !['validate','subtitles','render','dub','mux','package','pipeline','jobs','generate','localize','editorial-check','editorial-approve','youtube-private','backup','backup-verify','restore','thumbnail','youtube-thumbnail','youtube-schedule','editorial-analyze','generate-staged','youtube-kit','autopilot','soundtrack'].includes(command) || !file) {
+  if (!command || !['validate','subtitles','render','dub','mux','package','pipeline','jobs','generate','localize','editorial-check','editorial-approve','youtube-private','backup','backup-verify','restore','thumbnail','youtube-thumbnail','youtube-schedule','editorial-analyze','generate-staged','youtube-kit','autopilot','soundtrack','analytics'].includes(command) || !file) {
     console.log(`Usage:
   node dist/cli.js doctor
   node dist/cli.js studio
+  node dist/cli.js analytics examples/analytics.simulated.json --out workspace/analytics-demo.json
   node dist/cli.js validate examples/pilot.json
   node dist/cli.js subtitles examples/pilot.json
   node dist/cli.js render examples/pilot.json --preset preview|final
@@ -224,6 +226,18 @@ async function main(): Promise<void> {
   node dist/cli.js generate-staged examples/story-brief.json --out workspace/new-episode.json --confirm GENERATE_STAGED:EP0002
   node dist/cli.js youtube-kit examples/pilot.json --metadata examples/youtube-metadata.example.json`);
     process.exitCode = 2; return;
+  }
+  if(command==='analytics'){
+    const o=parseArgs(args,['--out']);
+    if(!o['--out'])throw new Error('analytics requires explicit --out file path');
+    const source=withinRoot(ROOT,file);
+    const target=withinRoot(ROOT,o['--out']);
+    const record=JSON.parse(await readFile(source,'utf8')) as unknown;
+    const report=analyzeBusiness(record);
+    await mkdir(resolve(target,'..'),{recursive:true});
+    await writeFile(target,JSON.stringify(report,null,2)+'\n',{flag:'wx'});
+    console.log(`ANALYTICS ${report.status}: ${report.episodes} episodes, ${report.views} views; no auto-scale decision. ${target}`);
+    return;
   }
   if(command==='localize'){
     const o=parseArgs(args,['--locale','--out']);
