@@ -90,6 +90,8 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
+      - name: Compile TypeScript before the Windows media test
+        run: npm run build
       - name: Require Windows FFmpeg and Sharp
         shell: pwsh
         run: |

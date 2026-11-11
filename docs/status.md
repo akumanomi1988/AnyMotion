@@ -158,3 +158,8 @@ CI de la primera iteración Sharp: los contratos Ubuntu finalizaron PASS, mientr
 #### Windows media validation gate — iteration 21
 
 The required `media-windows` CI job performs actual SVG → Sharp → H.264 rendering of the 78-second preview on `windows-latest`. It checks codec, resolution, frame rate and duration via FFprobe. This gate remains **UNVERIFIED** until the CI result is inspected; Windows commercial production with final TTS and 8–10-minute render still requires a dedicated benchmark.
+
+
+#### Windows workflow correction — 11/11/2026
+
+The first `media-windows` run demonstrated that FFmpeg can be installed and Sharp can load on GitHub-hosted Windows. It failed before video generation because CI had not compiled `dist/cli.js`. The job now runs `npm run build` before invoking render. Real Windows media verification remains OPEN until the new run finishes.
