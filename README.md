@@ -155,3 +155,17 @@ node dist/cli.js youtube-schedule examples/pilot.json \
 ```
 
 The scheduler validates `status.privacyStatus=private` before and after the update, verifies its remote `publishAt`, and saves a content-addressed receipt. A past time can cause immediate public publication in YouTube, therefore it is rejected. The live API has **not** been exercised with this project; the test suite uses mocked responses. Scheduling is a consequential publishing action requiring the operator's explicit authorization.
+
+
+## Staged LLM screenplay generation (optional, still editorially unapproved)
+
+The original one-response JSON generator remains available for compatibility. For longer episodes, the safer candidate is an outline followed by 5–12 independently validated scene calls, with one bounded repair attempt per scene, unique action/dialogue IDs, strict canonical timing and a final full-episode contract check. This reduces failure impact but does not prove narrative quality.
+
+```bash
+node dist/cli.js generate-staged examples/story-brief.json \
+  --out workspace/new-episode.json \
+  --confirm GENERATE_STAGED:EP0002
+node dist/cli.js editorial-analyze workspace/new-episode.json
+```
+
+`generate-staged` requires `ANYMOTION_LLM_ENDPOINT`, `ANYMOTION_LLM_MODEL`, `ANYMOTION_LLM_API_KEY`. These are potentially billable requests. The bounded intermediate LLM responses are stored in content-hashed checkpoints under `workspace/drafts/<episodeId>/staged/` to resume without resending completed requests. The files are private, excluded from Git and tied to the precise brief and model. A crashed process may leave `.active.lock`; verify that no stage is active before removing a stale lock manually. Staged LLM generation has been tested with a **mock provider only**.

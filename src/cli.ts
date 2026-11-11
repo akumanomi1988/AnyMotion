@@ -28,6 +28,8 @@ import {backupEpisode,restoreEpisodeBackup,verifyEpisodeBackup} from './producti
 import {startStudioServer} from './studio/server.js';
 import {scheduleApprovedVideo} from './publishing/schedule.js';
 import {analyzeEditorial} from './quality/editorial.js';
+import {createStagedStory} from './story/staged.js';
+import {startStagedProviderSession} from './story/checkpoints.js';
 
 const ROOT = resolve(process.cwd());
 const TEMP_ROOT = resolve(ROOT, 'workspace', 'temp');
@@ -192,7 +194,7 @@ async function main(): Promise<void> {
     console.log(`AnyMotion Studio (solo lectura) http://127.0.0.1:${service.port}`);
     return;
   }
-  if (!command || !['validate','subtitles','render','dub','mux','package','pipeline','jobs','generate','localize','editorial-check','editorial-approve','youtube-private','backup','backup-verify','restore','thumbnail','youtube-thumbnail','youtube-schedule','editorial-analyze','autopilot'].includes(command) || !file) {
+  if (!command || !['validate','subtitles','render','dub','mux','package','pipeline','jobs','generate','localize','editorial-check','editorial-approve','youtube-private','backup','backup-verify','restore','thumbnail','youtube-thumbnail','youtube-schedule','editorial-analyze','generate-staged','autopilot'].includes(command) || !file) {
     console.log(`Usage:
   node dist/cli.js doctor
   node dist/cli.js studio
@@ -215,7 +217,8 @@ async function main(): Promise<void> {
   node dist/cli.js thumbnail examples/pilot.json --frame-ms 35000
   node dist/cli.js youtube-thumbnail examples/pilot.json --confirm UPLOAD_THUMBNAIL:EP0001
   node dist/cli.js youtube-schedule examples/pilot.json --metadata examples/youtube-metadata.example.json --publish-at 2027-01-01T18:00:00Z --confirm SCHEDULE:EP0001:2027-01-01T18:00:00Z
-  node dist/cli.js editorial-analyze examples/pilot.json`);
+  node dist/cli.js editorial-analyze examples/pilot.json
+  node dist/cli.js generate-staged examples/story-brief.json --out workspace/new-episode.json --confirm GENERATE_STAGED:EP0002`);
     process.exitCode = 2; return;
   }
   if(command==='localize'){
@@ -241,6 +244,28 @@ async function main(): Promise<void> {
     console.log(log);
     console.log(`PREVIEW_READY ${brief.episodeId}; DIAGNOSTIC ONLY. Human script, art, voice and rights review needed.`);
     return;
+  }
+  if(command==='generate-staged'){
+    const opts=parseArgs(args,['--out','--confirm']);
+    const brief=validateStoryBrief(JSON.parse(await readFile(resolve(ROOT,file),'utf8')) as unknown);
+    if(!opts['--out']||opts['--confirm']!==`GENERATE_STAGED:${brief.episodeId}`)throw new Error('Staged LLM generation requires --out and exact confirmation');
+    const output=withinRoot(ROOT,opts['--out']);
+    const outlineOutput=withinRoot(ROOT,opts['--out']+'.outline.json');
+    for(const destination of [output,outlineOutput]){
+      try{await stat(destination);throw new Error(`Output already exists: ${destination}`);}
+      catch(e){if((e as NodeJS.ErrnoException).code!=='ENOENT')throw e;}
+    }
+    const model=process.env.ANYMOTION_LLM_MODEL,key=process.env.ANYMOTION_LLM_API_KEY,endpoint=process.env.ANYMOTION_LLM_ENDPOINT;
+    if(!model||!key||!endpoint)throw new Error('Staged generation needs explicit LLM model/key/endpoint');
+    const session=await startStagedProviderSession(brief,new OpenAICompatibleStoryProvider({model,apiKey:key,endpoint}),ROOT);
+    let generated;
+    try{generated=await createStagedStory(brief,session.provider);}
+    finally{await session.close();}
+    console.log(`LLM requests actually billed this run: ${session.calls()}`);
+    await mkdir(resolve(output,'..'),{recursive:true});
+    await writeFile(outlineOutput,JSON.stringify(generated.outline,null,2)+'\n',{flag:'wx'});
+    await writeFile(output,JSON.stringify(generated.episode,null,2)+'\n',{flag:'wx'});
+    console.log(`STAGED_DRAFT_READY ${brief.episodeId}: ${generated.episode.scenes.length} scenes, ${generated.llmCalls} LLM calls. EDITORIAL_PENDING.`);return;
   }
   if(command==='generate') {
     const o=parseArgs(args,['--out']);
