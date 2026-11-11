@@ -20,6 +20,7 @@ import { verifyMaster } from './production/master.js';
 import { approveEditorial, verifyEditorialApproval, verifiedRelease } from './publishing/approval.js';
 import { uploadPrivateVideo, validateVideoMetadata } from './publishing/youtube.js';
 import {acquireYouTubeAccessToken,credentialsFromEnvironment} from './publishing/oauth.js';
+import {backupEpisode,restoreEpisodeBackup,verifyEpisodeBackup} from './production/backup.js';
 
 const ROOT = resolve(process.cwd());
 const TEMP_ROOT = resolve(ROOT, 'workspace', 'temp');
@@ -178,7 +179,7 @@ async function executeStage<T>(db: ProductionJobStore, spec:JobSpec, work:()=>Pr
 async function main(): Promise<void> {
   const [command, file, ...args] = process.argv.slice(2);
   if (command === 'doctor') return doctor();
-  if (!command || !['validate','subtitles','render','dub','mux','package','pipeline','jobs','generate','localize','editorial-check','editorial-approve','youtube-private'].includes(command) || !file) {
+  if (!command || !['validate','subtitles','render','dub','mux','package','pipeline','jobs','generate','localize','editorial-check','editorial-approve','youtube-private','backup','backup-verify','restore'].includes(command) || !file) {
     console.log(`Usage:
   node dist/cli.js doctor
   node dist/cli.js validate examples/pilot.json
@@ -189,7 +190,13 @@ async function main(): Promise<void> {
   node dist/cli.js pipeline examples/pilot.json --preset preview|final --translation-en examples/pilot.en-US.json
   node dist/cli.js jobs examples/pilot.json
   node dist/cli.js generate examples/story-brief.json --out examples/new-episode.json
-  node dist/cli.js localize examples/pilot.json --locale en-US --out examples/EP0001.en-US.draft.json`);
+  node dist/cli.js localize examples/pilot.json --locale en-US --out examples/EP0001.en-US.draft.json
+  node dist/cli.js backup examples/pilot.json --to /external/archive
+  node dist/cli.js backup-verify examples/pilot.json --from /external/archive
+  node dist/cli.js restore examples/pilot.json --from /external/archive
+  node dist/cli.js editorial-check examples/pilot.json
+  node dist/cli.js editorial-approve examples/pilot.json --reviewer Producer --notes-file review.txt --rights-confirmed yes --confirm APPROVE:EP0001
+  node dist/cli.js youtube-private examples/pilot.json --metadata examples/youtube-metadata.example.json --confirm UPLOAD_PRIVATE:EP0001`);
     process.exitCode = 2; return;
   }
   if(command==='localize'){
@@ -207,6 +214,16 @@ async function main(): Promise<void> {
   const episode = await loadEpisode(file);
   if (command === 'validate') { console.log(`PASS ${episode.episodeId}: ${episode.scenes.length} scenes, ${episode.durationMs}ms`); return; }
   if (command === 'subtitles') { const files = await exportSrt(episode); console.log(files.join('\n')); return; }
+  if(command==='backup'||command==='backup-verify'||command==='restore'){
+    const o=parseArgs(args,command==='backup'?['--to']:['--from']);
+    const location=command==='backup'?o['--to']:o['--from'];
+    if(!location)throw new Error(`Missing backup location for ${command}`);
+    const archive=resolve(ROOT,location);
+    const result=command==='backup'?await backupEpisode(episode,archive):
+      command==='backup-verify'?await verifyEpisodeBackup(episode,archive):await restoreEpisodeBackup(episode,archive);
+    console.log(`${command.toUpperCase()} ${result.episodeId}: ${Object.keys(result.files).length} verified files; revision=${result.episodeSha256}`);
+    return;
+  }
   if(command==='editorial-check'){
     const release=await verifiedRelease(episode,'final');
     try{const approval=await verifyEditorialApproval(episode);console.log(JSON.stringify({releaseHash:release.sha256,status:approval.status},null,2));}

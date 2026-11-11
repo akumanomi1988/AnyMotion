@@ -84,7 +84,8 @@ test('approved full release supports resumable private upload and remote privacy
   assert.equal(result.privacyStatus,'private');assert.equal(result.videoId,'abcdefghijk');
   assert.deepEqual(seen.map(s=>s.method),['POST','PUT','PUT','GET']);
   const second=await uploadPrivateVideo({episode:ep,metadata,accessToken:'test-token',confirm:`UPLOAD_PRIVATE:${ep.episodeId}`,root,transport});
-  assert.equal(second.videoId,result.videoId);assert.equal(seen.length,4);
+  assert.equal(second.videoId,result.videoId);assert.equal(seen.length,5); // Re-check remote privacy rather than trusting cached receipt.
+  await assert.rejects(()=>uploadPrivateVideo({episode:ep,metadata:{...metadata,title:'Otro título distinto para este episodio'},accessToken:'test-token',confirm:`UPLOAD_PRIVATE:${ep.episodeId}`,root,transport}),/metadata revision/);
  }finally{await rm(root,{recursive:true,force:true});}
 });
 

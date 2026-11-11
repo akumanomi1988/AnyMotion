@@ -139,3 +139,25 @@ This cannot be performed with the diagnostic example. Only a private YouTube vid
 ### Implementation caveats
 
 On Windows, the pure Node contract/unit tests run with Node 22. Media rendering still requires a compatible `ffmpeg` build with the SVG decoder (`librsvg`), and the Windows 1080p/30fps pipeline must be benchmarked on the target computer. Node 22 `node:sqlite` is still experimental in this environment. Read `docs/status.md` before treating a feature as production-ready.
+
+
+## Explicit backup and safe private distribution commands
+
+```bash
+node dist/cli.js backup examples/pilot.json --to /external/anymotion-backups
+node dist/cli.js backup-verify examples/pilot.json --from /external/anymotion-backups
+# In an empty replacement workspace only:
+node dist/cli.js restore examples/pilot.json --from /external/anymotion-backups
+```
+
+**No current demo is publishable.** When a *future* full-quality release has been checked, set `ANYMOTION_APPROVED_VOICE_PROVIDERS` to an explicit comma-separated list of reviewed commercial voice provider IDs. For example, `tts-http:<model-hash>` matching the generated voice manifest (not a literal value from this README). This does not replace a review of the voice license or the program itself. Editorial approval requires a release with signed-off art, narrative and commercial rights; it refuses preview/diagnostic audio.
+
+With correctly scoped OAuth secrets supplied in the environment, an explicitly authorized operator can perform a **private-only** upload:
+
+```bash
+node dist/cli.js youtube-private examples/my-approved-episode.json \
+  --metadata examples/youtube-metadata.example.json \
+  --confirm UPLOAD_PRIVATE:EP0002
+```
+
+The uploader is tested with an HTTP mock only. It has **not** been run against a real YouTube channel, and multi-language audio uploads require separate verification in YouTube Studio.
