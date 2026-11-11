@@ -24,6 +24,7 @@ import { freezeTimeline } from './timeline/freeze.js';
 import { generateLocalizationFile } from './story/localizer.js';
 import { verifyMaster } from './production/master.js';
 import { approveEditorial, verifyEditorialApproval, verifiedRelease } from './publishing/approval.js';
+import {rightsInventory,attestRights,verifyRightsAttestation} from './publishing/rights.js';
 import { uploadPrivateVideo, validateVideoMetadata } from './publishing/youtube.js';
 import {acquireYouTubeAccessToken,credentialsFromEnvironment} from './publishing/oauth.js';
 import {makeThumbnail} from './production/thumbnail.js';
@@ -208,7 +209,7 @@ async function main(): Promise<void> {
     console.log(`AnyMotion Studio (solo lectura) http://127.0.0.1:${service.port}`);
     return;
   }
-  if (!command || !['validate','subtitles','render','dub','mux','package','pipeline','jobs','generate','localize','editorial-check','editorial-approve','youtube-private','backup','backup-verify','restore','thumbnail','youtube-thumbnail','youtube-schedule','editorial-analyze','generate-staged','youtube-kit','autopilot','soundtrack','analytics','creative-check','creative-index','creative-approve'].includes(command) || !file) {
+  if (!command || !['validate','subtitles','render','dub','mux','package','pipeline','jobs','generate','localize','editorial-check','editorial-approve','youtube-private','backup','backup-verify','restore','thumbnail','youtube-thumbnail','youtube-schedule','editorial-analyze','generate-staged','youtube-kit','autopilot','soundtrack','analytics','creative-check','creative-index','creative-approve','rights-inventory','rights-attest','rights-check'].includes(command) || !file) {
     console.log(`Usage:
   node dist/cli.js doctor
   node dist/cli.js studio
@@ -229,6 +230,9 @@ async function main(): Promise<void> {
   node dist/cli.js backup examples/pilot.json --to /external/archive
   node dist/cli.js backup-verify examples/pilot.json --from /external/archive
   node dist/cli.js restore examples/pilot.json --from /external/archive
+  node dist/cli.js rights-inventory examples/pilot.json
+  node dist/cli.js rights-attest examples/pilot.json --claims-file workspace/claims.json --reviewer Producer --notes-file rights-review.txt --confirm ATTEST_RIGHTS:EP0001
+  node dist/cli.js rights-check examples/pilot.json
   node dist/cli.js editorial-check examples/pilot.json
   node dist/cli.js editorial-approve examples/pilot.json --reviewer Producer --notes-file review.txt --rights-confirmed yes --confirm APPROVE:EP0001
   node dist/cli.js youtube-private examples/pilot.json --metadata examples/youtube-metadata.example.json --confirm UPLOAD_PRIVATE:EP0001
@@ -349,6 +353,23 @@ async function main(): Promise<void> {
     console.log(`DRAFT ${result.episode.episodeId}; model=${result.model}; warnings=${result.warnings.join(';')||'none'}. Human editorial approval required.`);return;
   }
   const episode = await loadEpisode(file);
+  if(command==='rights-inventory'){
+    if(args.length)throw new Error('rights-inventory does not accept extra options');
+    console.log(JSON.stringify(await rightsInventory(episode),null,2));return;
+  }
+  if(command==='rights-attest'){
+    const o=parseArgs(args,['--claims-file','--reviewer','--notes-file','--confirm']);
+    if(!o['--claims-file']||!o['--notes-file'])throw new Error('Rights attestation requires claims and review notes');
+    const claims=JSON.parse(await readFile(withinRoot(ROOT,o['--claims-file']),'utf8')) as unknown;
+    const notes=await readFile(withinRoot(ROOT,o['--notes-file']),'utf8');
+    const data=await attestRights(episode,{claims,notes,reviewer:o['--reviewer']??'',confirm:o['--confirm']??''});
+    console.log(`RIGHTS_ATTESTED ${data.episodeId}: ${data.claims.length} materials; human evidence recorded`);return;
+  }
+  if(command==='rights-check'){
+    if(args.length)throw new Error('rights-check does not accept options');
+    const checked=await verifyRightsAttestation(episode);
+    console.log(`RIGHTS_EVIDENCE_VALID ${checked.attestation.episodeId}: ${checked.sha256}`);return;
+  }
   if (command === 'editorial-analyze') {
     const opts=parseArgs(args,['--prior']);
     const prior=opts['--prior']?JSON.parse(await readFile(resolve(ROOT,opts['--prior']),'utf8')) as unknown:[];

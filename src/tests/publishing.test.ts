@@ -6,6 +6,7 @@ import {join,dirname} from 'node:path';
 import {createHash} from 'node:crypto';
 import {validateEpisode} from '../core/contracts.js';
 import {approveEditorial,verifyEditorialApproval,verifiedRelease} from '../publishing/approval.js';
+import {rightsInventory,attestRights} from '../publishing/rights.js';
 import {validateVideoMetadata,uploadPrivateVideo,type Transport} from '../publishing/youtube.js';
 import {uploadApprovedThumbnail} from '../publishing/thumbnail-upload.js';
 const sha=(b:Buffer|string)=>createHash('sha256').update(b).digest('hex');
@@ -39,6 +40,12 @@ async function seed(root:string,voice='tts-http:approved-model-123'){
  }
  const release={schemaVersion:'1.0',episodeId:ep.episodeId,preset:'final',locales:['es-ES','en-US'],status:'TECHNICAL_PASS_EDITORIAL_PENDING',publicationAllowed:false,artifacts,createdAt:new Date().toISOString()};
  await writeFile(join(folder,'release_final.json'),JSON.stringify(release,null,2)+'\n');
+ const inventory=await rightsInventory(ep,root);
+ const claims=inventory.materials.map(m=>({assetId:m.assetId,sha256:m.sha256,basis:'original-owned',rightsHolder:'Test Studio',
+  evidence:'This is original-owned production material explicitly confirmed for the test release.'}));
+ await attestRights(ep,{reviewer:'Test Producer',notes:'Every source used in this mock commercial release has been reviewed for rights.',
+  claims,confirm:`ATTEST_RIGHTS:${ep.episodeId}`},root);
+
 }
 process.env.ANYMOTION_APPROVED_VOICE_PROVIDERS='production-voice,tts-http:approved-model-123';
 const review={reviewer:'Test Producer',reviewNotes:'I have reviewed the entire episode for narrative quality, rights and correctness.',confirm:`APPROVE:${ep.episodeId}`,commercialRightsConfirmed:true};

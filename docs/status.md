@@ -174,3 +174,13 @@ At commit `70c1d59af23be6856bdbeefb9e21dc83a2d94ef3`, GitHub Actions run [430758
 - Required Windows native media smoke (actual FFmpeg installed through Chocolatey, Sharp rasterizer loaded, real 78-second H.264 render, 640x360/12fps and FFprobe duration verification).
 
 This replaces the previous *Windows media unverified* limitation only for the **CI preview**. Long-form 8–10-minute final-resolution renders, natural speech models, creative art direction, licensing evidence, real provider API calls, YouTube authorization and commercial publishing are still unverified. This is a **technical milestone, not F0–F6 completion**.
+
+## Iteration 22 — release-bound rights attestation (2026-11-11)
+
+- New `src/publishing/rights.ts` derives the exact picture/voice/music/SFX inventory from the verified FINAL release. One human-confirmed, content-addressed rights claim is mandatory for each category in that release. Evidence is saved only on explicit `ATTEST_RIGHTS:<episodeId>` confirmation.
+- `editorial-approve` now requires `rights-attestation.json` and binds its SHA-256 to the approval. Publication revalidates the ledger, so later changes fail closed. Rights claims are human assertions, **not automated legal proof**.
+- Commands: `rights-inventory`, `rights-attest`, `rights-check`. Detailed usage and limitations are in ADR-0003 and README.
+- Local independent validation: 76/76 tests passed using Node 22.16.0, TypeScript 5.8.3 and Sharp 0.34.1; a clean `ANYMOTION_TEST_VOICE=synthetic npm run pipeline:preview -- --sound-design examples/pilot.sound-design.json` rendered 936 frames and packaged the 78-second bilingual episode. No paid provider or YouTube call.
+- CI status for this iteration: pending until the branch update runs remotely.
+
+**Remaining gates:** renderer aesthetic/license selection, final characters and sets, authorized real LLM/TTS tests, native Windows benchmark on operator machine, six human-approved commercially published episodes and observed analytics. The product remains **PARTIAL / NOT COMMERCIAL-READY**.

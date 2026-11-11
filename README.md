@@ -300,3 +300,25 @@ In addition to Node contract tests on Windows, the workflow now **requires** a n
 GitHub Actions run [43075837183](https://github.com/akumanomi1988/AnyMotion/actions/runs/43075837183) passed all required jobs on Ubuntu and Windows. The Windows runner installed FFmpeg, loaded Sharp, rendered the **78-second** vector preview as H.264 and verified video dimensions, FPS and duration with FFprobe. Linux also passed the bilingual diagnostic pipeline and the 24-second 1080p/30fps streaming benchmark. The source code's locally executed suite is **73/73 PASS**.
 
 This establishes a real preview-level Windows workflow; it does **not** establish final TTS performance or art quality, unattended 10-minute Windows render, commercial rights or live YouTube publishing.
+
+## Rights and provenance gate (iteration 22)
+
+Commercial release requires a manual rights ledger tied to **the exact final rendered release**, in addition to technical QA, production voice allowlisting and editorial sign-off. The CLI never automatically declares material to be owned.
+
+```bash
+# After a real final episode has been packaged:
+node dist/cli.js rights-inventory examples/pilot.json > workspace/rights-inventory.json
+# Prepare workspace/claims.json with one human-researched claim for every material in the inventory.
+# Each claim includes assetId, sha256, rightsHolder, basis and detailed evidence;
+# third-party licensed work also requires licenseReference.
+node dist/cli.js rights-attest examples/pilot.json \
+  --claims-file workspace/claims.json \
+  --reviewer "Production Reviewer" \
+  --notes-file workspace/rights-review.txt \
+  --confirm ATTEST_RIGHTS:EP0001
+node dist/cli.js rights-check examples/pilot.json
+```
+
+The rights attestation is not a legal certificate. It records a human's assertion after reviewing underlying rights and licenses. Changing the release, any claimed material or the attestation invalidates editorial approval; a new episode revision and new authorization are required. Do not run `rights-attest` for preview content or diagnostic voices to circumvent publication protections.
+
+See [ADR-0003](docs/decisions/ADR-0003-release-rights-ledger.md) for coverage and limitations.

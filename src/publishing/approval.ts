@@ -8,11 +8,12 @@ import type {Episode} from '../core/contracts.js';
 import {validateEpisode} from '../core/contracts.js';
 import type {ReleaseManifest} from '../production/package.js';
 import {verifySoundscape} from '../audio/soundscape.js';
+import {verifyRightsAttestation} from './rights.js';
 
 export interface EditorialDecision {
   schemaVersion:'1.0'; episodeId:string; preset:'final'; releaseSha256:string;
   status:'EDITORIAL_APPROVED'; reviewer:string; reviewNotes:string; approvedAt:string;
-  commercialRightsConfirmed:true; diagnosticVoicesAllowed:false;
+  commercialRightsConfirmed:true; diagnosticVoicesAllowed:false; rightsEvidenceSha256:string;
 }
 export interface ApprovalInput {reviewer:string;reviewNotes:string;confirm:string;commercialRightsConfirmed:boolean}
 const sha=(bytes:Buffer|string)=>createHash('sha256').update(bytes).digest('hex');
@@ -76,9 +77,10 @@ export async function approveEditorial(episode:Episode,input:ApprovalInput,root=
     if(voice.status!=='LOCALIZED')throw new Error(`Locale ${locale} missing validated speech`);
     assertApprovedVoice(voice.provider,locale);
   }
+  const rights=await verifyRightsAttestation(ep,root);
   const decision:EditorialDecision={schemaVersion:'1.0',episodeId:ep.episodeId,preset:'final',releaseSha256:release.sha256,
     status:'EDITORIAL_APPROVED',reviewer:input.reviewer.trim(),reviewNotes:input.reviewNotes.trim(),approvedAt:new Date().toISOString(),
-    commercialRightsConfirmed:true,diagnosticVoicesAllowed:false};
+    commercialRightsConfirmed:true,diagnosticVoicesAllowed:false,rightsEvidenceSha256:rights.sha256};
   const file=withinRoot(root,join('productions',ep.episodeId,'editorial-approval.json'));
   await writeFile(file,JSON.stringify(decision,null,2)+'\n',{flag:'wx'});
   return decision;
@@ -89,6 +91,8 @@ export async function verifyEditorialApproval(episode:Episode,root=resolve(proce
   const approvalFile=withinRoot(root,join('productions',ep.episodeId,'editorial-approval.json'));
   const decision=JSON.parse(await readFile(approvalFile,'utf8')) as EditorialDecision;
   const release=await verifiedRelease(ep,'final',root);
+  const rights=await verifyRightsAttestation(ep,root);
+  if(decision.rightsEvidenceSha256!==rights.sha256)throw new Error('Rights evidence changed since editorial approval');
   if(decision.status!=='EDITORIAL_APPROVED'||decision.preset!=='final'||decision.episodeId!==ep.episodeId||
     decision.releaseSha256!==release.sha256||decision.commercialRightsConfirmed!==true||decision.diagnosticVoicesAllowed!==false)
     throw new Error('Editorial approval is invalid or stale');
