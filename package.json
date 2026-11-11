@@ -15,6 +15,7 @@
     "studio": "node dist/cli.js studio",
     "render:preview": "node dist/cli.js render examples/pilot.json --preset preview",
     "render:final": "node dist/cli.js render examples/pilot.json --preset final",
+    "benchmark:fullhd": "node dist/cli.js render examples/benchmark-24.json --preset final",
     "subtitles": "node dist/cli.js subtitles examples/pilot.json",
     "dub:en": "node dist/cli.js dub examples/pilot.json --locale en-US --translation examples/pilot.en-US.json",
     "dub:es": "node dist/cli.js dub examples/pilot.json --locale es-ES",

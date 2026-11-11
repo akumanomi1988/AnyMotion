@@ -277,3 +277,14 @@ Full-HD technical validation (Linux, 11 November 2026): the 78-second pilot has 
 `sharp@0.34.1` rasterizes renderer-generated SVG to PNG frames with fixed dimensions. FFmpeg only needs ordinary PNG input, FFprobe, and libx264, avoiding the nonstandard `librsvg` decoder dependency that blocked media CI/Windows builds. `ANYMOTION_RENDER_BACKEND=ffmpeg-svg` is a reversible legacy fallback, but **existing masters are bound to their backend**: changing backend requires archiving and regenerating the visual release, never silently reusing old bytes.
 
 The clean Linux Sharp pipeline generated a 78-second bilingual H.264/AAC MP4 at 640×360/12 FPS. The repository CI now treats multimedia integration as mandatory on Ubuntu instead of reporting green while silently skipping it; Windows runs native Sharp raster contract tests but still requires FFmpeg end-to-end verification.
+
+### Iteración 20 — Streaming, no PNGs temporales
+
+Sharp now streams each rasterized frame directly to FFmpeg's `image2pipe` with Node stream backpressure (`src/renderer/encoder.ts`). Large intermediate PNG sequences are not created on disk. `svg-ffmpeg-poc` remains an explicit legacy fallback. This is a raster/encoding optimization, not a change of characters, timing or editorial policy.
+
+```bash
+npm run build
+npm run benchmark:fullhd
+```
+
+The versioned `examples/benchmark-24.json` is a **24-second diagnostic**, containing the two leads, dialogue, camera cuts and gestures. The isolated Linux render produced 720 frames and H.264 at 1920×1080, 30fps, exactly 24.000 seconds in 17.5 seconds elapsed, with no leftover PNG temp directory. CI now requires this benchmark in addition to the bilingual preview. It is **not** a full nine-minute 1080p benchmark, a Windows media result or evidence of publishable art.

@@ -11,7 +11,8 @@ import {createSoundscape} from './audio/soundscape.js';
 import { frameCount } from './core/timing.js';
 import { withinRoot } from './core/filenames.js';
 import { renderSvgFrame } from './renderer/scene.js';
-import {currentRendererBackend,rasterizeSvgFrame,sharpAvailability} from './renderer/raster.js';
+import {currentRendererBackend,sharpAvailability} from './renderer/raster.js';
+import {encodeSharpFrames} from './renderer/encoder.js';
 import { dubEpisode, muxDubbedVideo, sourceLocalization, runTool, type Locale } from './audio/dubbing.js';
 import { configuredHttpTts } from './audio/tts-http.js';
 import { packageEpisode } from './production/package.js';
@@ -114,21 +115,24 @@ async function render(episode: Episode, preset: keyof typeof presets): Promise<v
   const started = performance.now();
   try {
     const backend=currentRendererBackend();
-    const extension=backend==='sharp-png-v1'?'png':'svg';
     console.log(`Rendering ${episode.episodeId}: ${n} frames via ${backend}, ${config.width}x${config.height}, ${config.fps} FPS`);
-    for (let frame = 0; frame < n; frame++) {
-      const filename = join(workDir, `frame_${String(frame).padStart(6, '0')}.${extension}`);
-      const svg=renderSvgFrame(episode, frame, config.fps, config.width, config.height);
-      await writeFile(filename,backend==='sharp-png-v1'?await rasterizeSvgFrame(svg,config.width,config.height):svg);
-      if ((frame + 1) % Math.max(1, Math.floor(n / 5)) === 0) console.log(`Generated ${frame + 1}/${n} frames`);
-    }
     const tempMp4 = join(workDir, 'rendering.mp4');
-    await executable('ffmpeg', [
-      '-hide_banner', '-loglevel', 'error', '-nostdin', '-y',
-      '-framerate', String(config.fps), '-i', join(workDir, `frame_%06d.${extension}`),
-      '-frames:v', String(n), '-an', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', String(config.crf),
-      '-pix_fmt', 'yuv420p', '-movflags', '+faststart', tempMp4,
-    ]);
+    if(backend==='sharp-png-v1'){
+      await encodeSharpFrames({episode,frames:n,width:config.width,height:config.height,fps:config.fps,crf:config.crf,output:tempMp4,
+        onProgress:done=>console.log(`Encoded ${done}/${n} streamed PNG frames`)});
+    }else{
+      for(let frame=0;frame<n;frame++){
+        const filename=join(workDir,`frame_${String(frame).padStart(6,'0')}.svg`);
+        await writeFile(filename,renderSvgFrame(episode,frame,config.fps,config.width,config.height));
+        if((frame+1)%Math.max(1,Math.floor(n/5))===0)console.log(`Generated ${frame+1}/${n} SVG frames`);
+      }
+      await executable('ffmpeg',[
+        '-hide_banner','-loglevel','error','-nostdin','-y',
+        '-framerate',String(config.fps),'-i',join(workDir,'frame_%06d.svg'),
+        '-frames:v',String(n),'-an','-c:v','libx264','-preset','veryfast','-crf',String(config.crf),
+        '-pix_fmt','yuv420p','-movflags','+faststart',tempMp4,
+      ]);
+    }
     const probe = await executable('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=codec_name,width,height,avg_frame_rate,duration', '-show_entries', 'format=duration', '-of', 'json', tempMp4]);
     const data = JSON.parse(probe) as { streams?: Array<{ codec_name: string; width: number; height: number; avg_frame_rate: string }>; format?: { duration: string } };
     const video = data.streams?.[0];

@@ -70,3 +70,12 @@ jobs:
           test -s productions/EP0001/audio/sfx.wav
       - name: Idempotent replay
         run: npm run pipeline:preview -- --sound-design examples/pilot.sound-design.json
+      - name: Verify 24-second FullHD benchmark (1920x1080/30fps)
+        run: |
+          npm run benchmark:fullhd
+          file="productions/EPBENCH24/final/silent.mp4"
+          test -s "$file"
+          ffprobe -v error -show_entries stream=width,height,r_frame_rate -of default=nw=1:nk=1 "$file" | grep -x '1920' >/dev/null
+          ffprobe -v error -show_entries stream=width,height,r_frame_rate -of default=nw=1:nk=1 "$file" | grep -x '1080' >/dev/null
+          ffprobe -v error -show_entries stream=r_frame_rate -of default=nw=1:nk=1 "$file" | grep -x '30/1' >/dev/null
+          ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$file" | grep -x '24.000000' >/dev/null

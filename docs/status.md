@@ -146,3 +146,10 @@ En una ejecución local Linux con `ANYMOTION_TEST_VOICE=synthetic`, `pipeline:fi
 
 
 CI de la primera iteración Sharp: los contratos Ubuntu finalizaron PASS, mientras el job multimedia FAIL durante la comprobación de dependencias del runner; por tanto NO se declara CI completa verde en ese commit. Se fija después `ubuntu-24.04` para medios (frente a la migración variable de `ubuntu-latest`), se añade diagnóstico explícito y una instalación FFmpeg de tiempo acotado solamente si falta el ejecutable. El objetivo sigue siendo que la ejecución multimedia sea **obligatoria**, no que se omita.
+
+## Iteración 20 — Eliminación de secuencias PNG temporales
+
+- La primera prueba Sharp a 1080p generó más de 290 MB de PNG intermedios y fue interrumpida antes de acabar. Se reemplazó el archivo temporal por `image2pipe`, mediante un `Readable` asíncrono con backpressure. Solo queda el MP4 temporal del proceso de codificación.
+- En un workspace aislado se generó de nuevo el episodio de 78 segundos (640×360/12 FPS, vídeo es/en H.264/AAC) y un benchmark real de **24 segundos, 1920×1080, 30 FPS, H.264**, 720 frames, con FFprobe: 24.000 s, 17.5 s de trabajo medido, espacio temporal mínimo.
+- `examples/benchmark-24.json` y su prueba de contrato reproducen el benchmark. CI Ubuntu exige ahora la conversión de este fragmento Full HD, además de toda la previsualización bilingüe.
+- La extrapolación del rendimiento a 9 minutos en 1080p y la compatibilidad FFmpeg Windows siguen pendientes: no tratarlas como validadas por un clip corto.
