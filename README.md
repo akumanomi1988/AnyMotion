@@ -169,3 +169,27 @@ node dist/cli.js thumbnail examples/pilot.json --frame-ms 35000
 ```
 
 Creates a deterministic 1280×720 PNG and its checksum manifest under `productions/<episodeId>/thumbnails/`. It is a visual draft; editorial review of composition, typography and localizations remains required. This command does **not** upload a YouTube thumbnail.
+
+
+### Consola local de inspección
+
+```bash
+npm run build
+npm run studio
+# Abre http://127.0.0.1:4321
+```
+
+Interfaz de **solo lectura**: listado de producciones, estado del paquete, duración, idiomas, reproducción de los MP4 con streaming por rangos. No acepta operaciones de escritura ni publica contenido. Solo escucha en `127.0.0.1`; no hay autenticación porque está diseñada exclusivamente para el operador local. No debe exponerse por proxy o Internet sin añadir autenticación y controles CSRF.
+
+### Subida protegida de miniaturas (F5, API oficial)
+
+Tras aprobar una **versión final** con voces y derechos revisados, subir el vídeo como privado y generar la miniatura original, puedes solicitar **por separado** su carga al mismo `videoId`:
+
+```bash
+node dist/cli.js youtube-thumbnail examples/my-approved-episode.json \
+  --confirm UPLOAD_THUMBNAIL:EP0002
+```
+
+El comando verifica el `editorial-approval.json` de la revisión final, el recibo de subida privada, el SHA-256 y las dimensiones del PNG. Comprueba que YouTube sigue mostrando el vídeo como privado antes y después del cambio. No modifica título, visibilidad ni fecha de publicación. Registra un recibo idempotente en `publication/youtube-thumbnail.json` y, si la carga falla, deja el error visible. Requiere un token OAuth válido: las pruebas usan HTTP simulado y **no acreditan funcionamiento con un canal real**.
+
+La API `thumbnails.set` solo establece la miniatura predeterminada; las miniaturas localizadas y pistas de doblaje quedan fuera de esta implementación hasta verificar funciones del canal en Studio. Documentación oficial: https://developers.google.com/youtube/data/reference/rest/v3/thumbnails/set

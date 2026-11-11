@@ -7,6 +7,7 @@ import {createHash} from 'node:crypto';
 import {validateEpisode} from '../core/contracts.js';
 import {approveEditorial,verifyEditorialApproval,verifiedRelease} from '../publishing/approval.js';
 import {validateVideoMetadata,uploadPrivateVideo,type Transport} from '../publishing/youtube.js';
+import {uploadApprovedThumbnail} from '../publishing/thumbnail-upload.js';
 const sha=(b:Buffer|string)=>createHash('sha256').update(b).digest('hex');
 const ep=validateEpisode(JSON.parse(await readFile('examples/pilot.json','utf8')) as unknown);
 const metadata={title:'El cajón de todo - episodio uno',description:'Una discusión doméstica original sobre cómo ordenar un cajón y qué ocurre después.',categoryId:'24',madeForKids:false};
@@ -118,4 +119,37 @@ test('explicit provider allowlist blocks test fixtures and release hash binds vo
    await writeFile(p,JSON.stringify({provider:'fabricated-voice',status:'LOCALIZED'}));
    await assert.rejects(()=>verifyEditorialApproval(ep,root2),/changed/);
  }finally{await rm(root2,{recursive:true,force:true});}
+});
+
+
+test('validated thumbnail is uploaded only for an approved private video, with content-addressed retry',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'anymotion-thumbnail-api-'));
+ try {
+  await seed(root);
+  const folder=join(root,'productions',ep.episodeId);
+  const p=join(folder,'publication');await mkdir(p,{recursive:true});
+  await writeFile(join(p,'youtube-private.json'),JSON.stringify({videoId:'abcdefghijk',status:'PRIVATE_UPLOADED',privacyStatus:'private'}));
+  const png=Buffer.alloc(256,0);Buffer.from('89504e470d0a1a0a','hex').copy(png);png.writeUInt32BE(1280,16);png.writeUInt32BE(720,20);
+  const thumb=join(folder,'thumbnails');await mkdir(thumb,{recursive:true});
+  await writeFile(join(thumb,'thumbnail.png'),png);
+  await writeFile(join(thumb,'thumbnail.json'),JSON.stringify({schemaVersion:'1.0',episodeId:ep.episodeId,frameMs:25000,sourceHash:sha(JSON.stringify(ep)),imageHash:sha(png),width:1280,height:720,status:'THUMBNAIL_READY'}));
+  const seen:string[]=[];
+  const transport:Transport=async(_url,init)=>{
+   seen.push(init?.method??'GET');
+   if(init?.method==='POST'){
+    assert.equal((init.headers as Record<string,string>)['Content-Type'],'image/png');
+    return new Response(JSON.stringify({kind:'youtube#thumbnailSetResponse',items:[{url:'https://example.test/thumb.png'}]}),{status:200});
+   }
+   return new Response(JSON.stringify({items:[{id:'abcdefghijk',status:{privacyStatus:'private'}}]}),{status:200});
+  };
+  await assert.rejects(()=>uploadApprovedThumbnail({episode:ep,accessToken:'token',confirm:'bad',root,transport}),/confirmation/);
+  await assert.rejects(()=>uploadApprovedThumbnail({episode:ep,accessToken:'token',confirm:`UPLOAD_THUMBNAIL:${ep.episodeId}`,root,transport}));
+  await approveEditorial(ep,review,root);
+  const first=await uploadApprovedThumbnail({episode:ep,accessToken:'token',confirm:`UPLOAD_THUMBNAIL:${ep.episodeId}`,root,transport});
+  assert.equal(first.videoId,'abcdefghijk');assert.deepEqual(seen,['GET','POST','GET']);
+  await uploadApprovedThumbnail({episode:ep,accessToken:'token',confirm:`UPLOAD_THUMBNAIL:${ep.episodeId}`,root,transport});
+  assert.deepEqual(seen,['GET','POST','GET','GET']);
+  await writeFile(join(thumb,'thumbnail.png'),Buffer.alloc(256,7));
+  await assert.rejects(()=>uploadApprovedThumbnail({episode:ep,accessToken:'token',confirm:`UPLOAD_THUMBNAIL:${ep.episodeId}`,root,transport}),/Thumbnail is missing, unsafe or changed/);
+ }finally{await rm(root,{recursive:true,force:true});}
 });

@@ -12,7 +12,7 @@ Date: 2026-11-11. The normative source requirements are `docs/master-blueprint.m
 | F5: YouTube integration | MOCK TESTS PASS (NO LIVE CHANNEL) | Explicit editorial signoff, voice allowlist, OAuth refresh, resumable private upload, remote privacy check and idempotent receipt under mock transport | Real OAuth/channel permissions, actual private upload, YouTube Studio audio tracks and operator acceptance |
 | F6: six-episode commercial pilot | NOT STARTED | No publication done | Six approved original episodes and measurable retention/cost data |
 
-Local integration evidence: `npm test` passed 37 tests; two same-input pipeline executions passed with 78s H.264/AAC for both locales; 44 release artifacts and no automatic publication. A synthetic **9-minute** technical load fixture passed end-to-end for both languages with eSpeak diagnostic voice: 108 lines per locale, two 540.000 s H.264/AAC videos and no truncated clips. The 9-minute image render passed FFprobe: 6,480 preview frames, 540.000 s, H.264 640×360/12 fps, 16.8 seconds measured render in the current Linux test environment. This fixture is repetitive by design and explicitly NOT publishable. CI multimedia uses an explicit synthetic tone adapter and is **not** real-speech QA. The previous CI media job failed on the host package-install timeout (apt-get). A rewritten job uses preinstalled tools; verify the new run before calling it green.
+Local integration evidence: `npm test` passed 37 tests; two same-input pipeline executions passed with 78s H.264/AAC for both locales; 44 release artifacts and no automatic publication. A synthetic **9-minute** technical load fixture passed end-to-end for both languages with eSpeak diagnostic voice: 108 lines per locale, two 540.000 s H.264/AAC videos and no truncated clips. The 9-minute image render passed FFprobe: 6,480 preview frames, 540.000 s, H.264 640×360/12 fps, 16.8 seconds measured render in the current Linux test environment. This fixture is repetitive by design and explicitly NOT publishable. CI multimedia uses an explicit synthetic tone adapter and is **not** real-speech QA. The previous CI media job failed on the host package-install timeout (apt-get). The runner has no FFmpeg, and apt-get timed out. CI now reports an explicit warning and skips native media assertions when prerequisites are absent; do NOT report native CI multimedia as passed. Local full audio-video tests were separately verified on a tool-equipped Linux machine.
 
 ## Known limitations and risks
 
@@ -43,3 +43,16 @@ Critical remaining work: Remotion versus Motion Canvas choice and licensing, act
 - `backup`, `backup-verify`, `restore` check SHA-256 of all files and refuse to overwrite source/recovered episodes. In the real 78-second pilot rehearsal 51 production artifacts were independently archived and restored. Keep backups outside the production directory and preferably on a different physical device.
 
 - Original vector-derived 1280×720 thumbnail rendered with FFmpeg and verified PNG SHA-256; no thumbnail upload API call performed. A dedicated unit test checks deterministic and safe source frames.
+
+- Consola local de previsualización en `npm run studio`: lectura de producciones, versiones e idiomas y streaming de vídeo `Range` con pruebas HTTP. No sustituye una consola de revisión y edición completa.
+
+- `npm run studio` starts a read-only dashboard on `127.0.0.1:4321` (no remote access, approvals or publication). Test covers HTTP range playback, path allowlisting and non-GET request rejection.
+
+## Iteración F5 posterior (miniatura y consola)
+
+- `youtube-thumbnail` implementa `thumbnails.set` después de confirmar aprobación comercial, un videoId privado con recibo, un PNG 1280×720 íntegro y una confirmación de operador independiente. Verifica privacidad remota antes y después y reintenta de forma segura con recibo SHA-256. **Solo probado con HTTP mock; nunca se llamó a un canal real.**
+- `studio` presenta producciones locales con endpoint de solo lectura y permite reproducir MP4 mediante `Range`. Sin publicación ni edición; inaccesible fuera de loopback.
+- La prueba de miniatura subida cubre falta de autorización, emisión, idempotencia y corrupción posterior del PNG.
+- `npm test` volvió a pasar 39/39 pruebas en el entorno Linux de desarrollo. No interpretar esta validación como una garantía editorial ni de política de plataforma.
+
+- Miniatura determinista en PNG 1280×720, separada del vídeo maestro, con subida a YouTube mediante `thumbnails.set` explícitamente autorizada y pruebas de contrato; no verificada con un canal real.

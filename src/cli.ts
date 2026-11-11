@@ -21,7 +21,9 @@ import { approveEditorial, verifyEditorialApproval, verifiedRelease } from './pu
 import { uploadPrivateVideo, validateVideoMetadata } from './publishing/youtube.js';
 import {acquireYouTubeAccessToken,credentialsFromEnvironment} from './publishing/oauth.js';
 import {makeThumbnail} from './production/thumbnail.js';
+import {uploadApprovedThumbnail} from './publishing/thumbnail-upload.js';
 import {backupEpisode,restoreEpisodeBackup,verifyEpisodeBackup} from './production/backup.js';
+import {startStudioServer} from './studio/server.js';
 
 const ROOT = resolve(process.cwd());
 const TEMP_ROOT = resolve(ROOT, 'workspace', 'temp');
@@ -180,9 +182,16 @@ async function executeStage<T>(db: ProductionJobStore, spec:JobSpec, work:()=>Pr
 async function main(): Promise<void> {
   const [command, file, ...args] = process.argv.slice(2);
   if (command === 'doctor') return doctor();
-  if (!command || !['validate','subtitles','render','dub','mux','package','pipeline','jobs','generate','localize','editorial-check','editorial-approve','youtube-private','backup','backup-verify','restore','thumbnail'].includes(command) || !file) {
+  if (command === 'studio') {
+    const port=process.env.ANYMOTION_STUDIO_PORT?Number(process.env.ANYMOTION_STUDIO_PORT):4321;
+    const service=await startStudioServer(ROOT,port);
+    console.log(`AnyMotion Studio (solo lectura) http://127.0.0.1:${service.port}`);
+    return;
+  }
+  if (!command || !['validate','subtitles','render','dub','mux','package','pipeline','jobs','generate','localize','editorial-check','editorial-approve','youtube-private','backup','backup-verify','restore','thumbnail','youtube-thumbnail'].includes(command) || !file) {
     console.log(`Usage:
   node dist/cli.js doctor
+  node dist/cli.js studio
   node dist/cli.js validate examples/pilot.json
   node dist/cli.js subtitles examples/pilot.json
   node dist/cli.js render examples/pilot.json --preset preview|final
@@ -198,7 +207,8 @@ async function main(): Promise<void> {
   node dist/cli.js editorial-check examples/pilot.json
   node dist/cli.js editorial-approve examples/pilot.json --reviewer Producer --notes-file review.txt --rights-confirmed yes --confirm APPROVE:EP0001
   node dist/cli.js youtube-private examples/pilot.json --metadata examples/youtube-metadata.example.json --confirm UPLOAD_PRIVATE:EP0001
-  node dist/cli.js thumbnail examples/pilot.json --frame-ms 35000`);
+  node dist/cli.js thumbnail examples/pilot.json --frame-ms 35000
+  node dist/cli.js youtube-thumbnail examples/pilot.json --confirm UPLOAD_THUMBNAIL:EP0001`);
     process.exitCode = 2; return;
   }
   if(command==='localize'){
@@ -243,6 +253,12 @@ async function main(): Promise<void> {
     if(!o['--notes-file'])throw new Error('Editorial approval requires --notes-file');
     const decision=await approveEditorial(episode,{reviewer:o['--reviewer']??'',reviewNotes:await readFile(resolve(ROOT,o['--notes-file']),'utf8'),confirm:o['--confirm']??'',commercialRightsConfirmed:o['--rights-confirmed']==='yes'});
     console.log(`EDITORIAL_APPROVED ${decision.episodeId} for release ${decision.releaseSha256}`);return;
+  }
+  if(command==='youtube-thumbnail'){
+    const o=parseArgs(args,['--confirm']);
+    const token=await acquireYouTubeAccessToken(credentialsFromEnvironment());
+    const result=await uploadApprovedThumbnail({episode,accessToken:token,confirm:o['--confirm']??''});
+    console.log(`THUMBNAIL_UPLOADED ${result.episodeId} for private video ${result.videoId}`);return;
   }
   if(command==='youtube-private'){
     const o=parseArgs(args,['--metadata','--confirm']);

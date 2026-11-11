@@ -12,6 +12,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "npm run build && node --test dist/tests/*.test.js",
     "doctor": "node dist/cli.js doctor",
+    "studio": "node dist/cli.js studio",
     "render:preview": "node dist/cli.js render examples/pilot.json --preset preview",
     "render:final": "node dist/cli.js render examples/pilot.json --preset final",
     "subtitles": "node dist/cli.js subtitles examples/pilot.json",
