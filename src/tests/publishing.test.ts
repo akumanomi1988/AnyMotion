@@ -66,6 +66,7 @@ test('approved full release supports resumable private upload and remote privacy
   await seed(root);
   await approveEditorial(ep,review,root);
   assert.equal((await verifyEditorialApproval(ep,root)).status,'EDITORIAL_APPROVED');
+  const localizedMetadata={...metadata,localizations:{'en-US':{title:'The everything drawer - episode one',description:'An original domestic comedy about organizing the drawer and the chaos that follows.'}}};
   const seen:{method:string;url:string;status?:string}[]=[];
   const transport:Transport=async(input,init)=>{
    const url=String(input),method=init?.method??'GET';
@@ -74,6 +75,8 @@ test('approved full release supports resumable private upload and remote privacy
      const req=JSON.parse(String(init?.body)) as {status:{privacyStatus:string;selfDeclaredMadeForKids:boolean}};
      assert.equal(req.status.privacyStatus,'private');
      assert.equal(req.status.selfDeclaredMadeForKids,false);
+     assert.match(url,/part=snippet,status,localizations/);
+     assert.deepEqual((req as unknown as {localizations:unknown}).localizations,localizedMetadata.localizations);
      return new Response('',{status:200,headers:{location:'https://www.googleapis.com/upload/youtube/v3/videos?upload_id=test'}});
    }
    if(method==='PUT'&&init?.headers && 'Content-Range' in init.headers && init.headers['Content-Range'].startsWith('bytes */'))return new Response('',{status:308});
@@ -81,10 +84,10 @@ test('approved full release supports resumable private upload and remote privacy
    if(method==='GET')return new Response(JSON.stringify({items:[{id:'abcdefghijk',status:{privacyStatus:'private'}}]}),{status:200});
    throw new Error(`Unexpected mock request ${method} ${url}`);
   };
-  const result=await uploadPrivateVideo({episode:ep,metadata,accessToken:'test-token',confirm:`UPLOAD_PRIVATE:${ep.episodeId}`,root,transport});
+  const result=await uploadPrivateVideo({episode:ep,metadata:localizedMetadata,accessToken:'test-token',confirm:`UPLOAD_PRIVATE:${ep.episodeId}`,root,transport});
   assert.equal(result.privacyStatus,'private');assert.equal(result.videoId,'abcdefghijk');
   assert.deepEqual(seen.map(s=>s.method),['POST','PUT','PUT','GET']);
-  const second=await uploadPrivateVideo({episode:ep,metadata,accessToken:'test-token',confirm:`UPLOAD_PRIVATE:${ep.episodeId}`,root,transport});
+  const second=await uploadPrivateVideo({episode:ep,metadata:localizedMetadata,accessToken:'test-token',confirm:`UPLOAD_PRIVATE:${ep.episodeId}`,root,transport});
   assert.equal(second.videoId,result.videoId);assert.equal(seen.length,5); // Re-check remote privacy rather than trusting cached receipt.
   await assert.rejects(()=>uploadPrivateVideo({episode:ep,metadata:{...metadata,title:'Otro título distinto para este episodio'},accessToken:'test-token',confirm:`UPLOAD_PRIVATE:${ep.episodeId}`,root,transport}),/metadata revision/);
  }finally{await rm(root,{recursive:true,force:true});}
@@ -152,4 +155,13 @@ test('validated thumbnail is uploaded only for an approved private video, with c
   await writeFile(join(thumb,'thumbnail.png'),Buffer.alloc(256,7));
   await assert.rejects(()=>uploadApprovedThumbnail({episode:ep,accessToken:'token',confirm:`UPLOAD_THUMBNAIL:${ep.episodeId}`,root,transport}),/Thumbnail is missing, unsafe or changed/);
  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+
+test('YouTube metadata localization is constrained and passed to official insert parts',()=>{
+ const localized={...metadata,localizations:{'en-US':{title:'The everything drawer - episode one',description:'An original household comedy about a drawer that becomes difficult to understand.'}}};
+ assert.deepEqual(validateVideoMetadata(localized).localizations,localized.localizations);
+ assert.throws(()=>validateVideoMetadata({...localized,localizations:{'en-US':{title:'bad',description:'too short'}}}),/Invalid localized/);
+ assert.throws(()=>validateVideoMetadata({...localized,localizations:{'es-ES':localized.localizations['en-US']}}),/source metadata locale/);
+ assert.throws(()=>validateVideoMetadata({...localized,localizations:{'../':localized.localizations['en-US']}}),/Unsupported/);
 });

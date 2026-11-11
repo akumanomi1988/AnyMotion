@@ -7,7 +7,7 @@ import {withinRoot} from '../core/filenames.js';
 import {type Episode,validateEpisode} from '../core/contracts.js';
 import {verifyEditorialApproval,verifiedRelease} from './approval.js';
 
-export interface VideoMetadata {title:string;description:string;tags?:string[];categoryId:string;madeForKids:boolean}
+export interface VideoMetadata {title:string;description:string;tags?:string[];categoryId:string;madeForKids:boolean;localizations?:Record<string,{title:string;description:string}>}
 export interface UploadResult {videoId:string;status:'PRIVATE_UPLOADED';privacyStatus:'private';sourceSha256:string;metadataSha256:string;uploadedAt:string}
 export type Transport = (input:string|URL,init?:RequestInit)=>Promise<Response>;
 const MAX_CHUNK=8*1024*1024;
@@ -17,12 +17,27 @@ const exists=async(file:string)=>stat(file).then(()=>true,(e:NodeJS.ErrnoExcepti
 export function validateVideoMetadata(input:unknown):VideoMetadata {
  if(!input||typeof input!=='object'||Array.isArray(input))throw new Error('Invalid video metadata');
  const m=input as Record<string,unknown>;
- if(Object.keys(m).some(k=>!['title','description','tags','categoryId','madeForKids'].includes(k)))throw new Error('Unknown YouTube metadata fields');
+ if(Object.keys(m).some(k=>!['title','description','tags','categoryId','madeForKids','localizations'].includes(k)))throw new Error('Unknown YouTube metadata fields');
  if(typeof m.title!=='string'||m.title.trim().length<8||m.title.length>100)throw new Error('Title must contain 8–100 characters');
  if(typeof m.description!=='string'||m.description.trim().length<30||m.description.length>5000)throw new Error('Description must contain 30–5000 characters');
  if(m.tags!==undefined&&(!Array.isArray(m.tags)||m.tags.length>20||m.tags.some(t=>typeof t!=='string'||!t.trim()||t.length>40)))throw new Error('Invalid tags');
  if(typeof m.categoryId!=='string'||!/^[0-9]{1,3}$/.test(m.categoryId))throw new Error('Explicit categoryId required');
  if(typeof m.madeForKids!=='boolean')throw new Error('Explicit madeForKids classification required');
+ if(m.localizations!==undefined){
+   const loc=m.localizations;
+   if(!loc||typeof loc!=='object'||Array.isArray(loc))throw new Error('Invalid metadata localizations');
+   const entries=Object.entries(loc);
+   if(entries.length<1||entries.length>8)throw new Error('Metadata localizations must contain 1–8 languages');
+   for(const [language,value] of entries){
+     if(!/^[a-z]{2,3}(?:-[A-Z]{2})?$/.test(language)||language==='es-ES')throw new Error(`Unsupported or source metadata locale: ${language}`);
+     if(!value||typeof value!=='object'||Array.isArray(value))throw new Error(`Invalid localization for ${language}`);
+     const fields=value as Record<string,unknown>;
+     if(Object.keys(fields).sort().join(',')!=='description,title'||typeof fields.title!=='string'||fields.title.trim().length<8||fields.title.length>100||
+       typeof fields.description!=='string'||fields.description.trim().length<30||fields.description.length>5000)
+       throw new Error(`Invalid localized metadata for ${language}`);
+   }
+ }
+
  return input as VideoMetadata;
 }
 function sessionUrl(location:string):string {
@@ -77,8 +92,8 @@ export async function uploadPrivateVideo(input:{episode:Episode;metadata:VideoMe
      if(saved.sourceSha256!==sourceSha256||saved.size!==details.size||(saved as {metadataSha256?:string}).metadataSha256!==metadataSha256)throw new Error('Upload session is for another file/metadata revision');
      session=sessionUrl(saved.url);
    }else{
-     const body={snippet:{title:metadata.title,description:metadata.description,tags:metadata.tags??[],categoryId:metadata.categoryId,defaultLanguage:ep.sourceLocale},status:{privacyStatus:'private',selfDeclaredMadeForKids:metadata.madeForKids}};
-     const endpoint='https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status';
+     const body={snippet:{title:metadata.title,description:metadata.description,tags:metadata.tags??[],categoryId:metadata.categoryId,defaultLanguage:ep.sourceLocale},status:{privacyStatus:'private',selfDeclaredMadeForKids:metadata.madeForKids},...(metadata.localizations?{localizations:metadata.localizations}:{})};
+     const endpoint=`https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status${metadata.localizations?',localizations':''}`;
      const init=await transport(endpoint,{method:'POST',redirect:'manual',headers:{...headers,'Content-Type':'application/json; charset=UTF-8','X-Upload-Content-Length':String(details.size),'X-Upload-Content-Type':'video/mp4'},body:JSON.stringify(body)});
      await checkedResponse(init,[200]);
      session=sessionUrl(init.headers.get('location')??'');
