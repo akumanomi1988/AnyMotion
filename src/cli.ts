@@ -301,9 +301,13 @@ async function main(): Promise<void> {
     console.log(`THUMBNAIL_READY ${result.episodeId}: frame ${result.frameMs}ms; SHA-256 ${result.imageHash}`);return;
   }
   if(command==='editorial-check'){
-    const release=await verifiedRelease(episode,'final');
-    try{const approval=await verifyEditorialApproval(episode);console.log(JSON.stringify({releaseHash:release.sha256,status:approval.status},null,2));}
-    catch(e){console.log(JSON.stringify({releaseHash:release.sha256,status:'EDITORIAL_PENDING',blocker:e instanceof Error?e.message:String(e)},null,2));}
+    try{
+      const release=await verifiedRelease(episode,'final');
+      try{const approval=await verifyEditorialApproval(episode);console.log(JSON.stringify({releaseHash:release.sha256,status:approval.status},null,2));}
+      catch(e){console.log(JSON.stringify({releaseHash:release.sha256,status:'EDITORIAL_PENDING',blocker:e instanceof Error?e.message:String(e)},null,2));}
+    }catch(e){
+      console.log(JSON.stringify({episodeId:episode.episodeId,status:'FINAL_RELEASE_NOT_READY',blocker:e instanceof Error?e.message:String(e)},null,2));
+    }
     return;
   }
   if(command==='editorial-approve'){
