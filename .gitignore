@@ -1,0 +1,13 @@
+node_modules/
+dist/
+workspace/
+productions/
+*.mp4
+*.wav
+*.mp3
+*.png
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store

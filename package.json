@@ -1,0 +1,21 @@
+{
+  "name": "anymotion",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Deterministic vector animation studio for original animated sitcoms",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test dist/tests/contracts.test.js",
+    "doctor": "node dist/cli.js doctor",
+    "render:preview": "node dist/cli.js render examples/pilot.json --preset preview",
+    "render:final": "node dist/cli.js render examples/pilot.json --preset final",
+    "subtitles": "node dist/cli.js subtitles examples/pilot.json"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "typescript": "^5.8.3"
+  }
+}
