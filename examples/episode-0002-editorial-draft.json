@@ -1,0 +1,1394 @@
+{
+  "schemaVersion": "1.0",
+  "episodeId": "EP0002",
+  "title": "El tratado de los veintidós grados",
+  "sourceLocale": "es-ES",
+  "canvas": {
+    "width": 1280,
+    "height": 720
+  },
+  "fps": 30,
+  "durationMs": 540000,
+  "scenes": [
+    {
+      "sceneId": "SC001",
+      "setId": "living-room",
+      "startMs": 0,
+      "endMs": 54000,
+      "camera": [
+        {
+          "atMs": 0,
+          "shot": "wide"
+        },
+        {
+          "atMs": 12000,
+          "shot": "mediumVera"
+        },
+        {
+          "atMs": 24000,
+          "shot": "twoShot"
+        },
+        {
+          "atMs": 36000,
+          "shot": "closeLeo"
+        },
+        {
+          "atMs": 48000,
+          "shot": "twoShot"
+        }
+      ],
+      "actions": [
+        {
+          "id": "AC001",
+          "type": "setExpression",
+          "actorId": "vera",
+          "expression": "skeptical",
+          "atMs": 1000
+        },
+        {
+          "id": "AC002",
+          "type": "setExpression",
+          "actorId": "vera",
+          "expression": "thinking",
+          "atMs": 12000
+        },
+        {
+          "id": "AC003",
+          "type": "setExpression",
+          "actorId": "vera",
+          "expression": "annoyed",
+          "atMs": 23000
+        },
+        {
+          "id": "AC004",
+          "type": "setExpression",
+          "actorId": "vera",
+          "expression": "surprised",
+          "atMs": 34000
+        },
+        {
+          "id": "AC005",
+          "type": "setExpression",
+          "actorId": "vera",
+          "expression": "happy",
+          "atMs": 45000
+        },
+        {
+          "id": "AC051",
+          "type": "gesture",
+          "actorId": "leo",
+          "gesture": "point",
+          "atMs": 32000,
+          "durationMs": 1800
+        }
+      ],
+      "dialogue": [
+        {
+          "lineId": "DL001",
+          "characterId": "vera",
+          "startMs": 200,
+          "endMs": 5600,
+          "text": "¿Has tocado la calefacción? La casa acaba de pasar de otoño a desierto."
+        },
+        {
+          "lineId": "DL002",
+          "characterId": "leo",
+          "startMs": 6200,
+          "endMs": 11600,
+          "text": "La he puesto a veintidós. Es una temperatura científicamente civilizada."
+        },
+        {
+          "lineId": "DL003",
+          "characterId": "vera",
+          "startMs": 12200,
+          "endMs": 17600,
+          "text": "Mi pie izquierdo opina que estamos en el polo norte."
+        },
+        {
+          "lineId": "DL004",
+          "characterId": "leo",
+          "startMs": 18200,
+          "endMs": 23600,
+          "text": "Tu pie izquierdo lleva calcetín de verano en noviembre. No tiene voto."
+        },
+        {
+          "lineId": "DL005",
+          "characterId": "vera",
+          "startMs": 24200,
+          "endMs": 29600,
+          "text": "Entonces mi pie derecho solicita una segunda lectura independiente."
+        },
+        {
+          "lineId": "DL006",
+          "characterId": "leo",
+          "startMs": 30200,
+          "endMs": 35600,
+          "text": "Hagamos una cosa: ninguno toca la calefacción sin avisar al otro."
+        },
+        {
+          "lineId": "DL007",
+          "characterId": "vera",
+          "startMs": 36200,
+          "endMs": 41600,
+          "text": "Perfecto. ¿Avisar incluye dejar una nota encima del termostato?"
+        },
+        {
+          "lineId": "DL008",
+          "characterId": "leo",
+          "startMs": 42200,
+          "endMs": 47600,
+          "text": "Incluye decirlo. Con palabras. Mirándome a la cara, si puede ser."
+        },
+        {
+          "lineId": "DL009",
+          "characterId": "vera",
+          "startMs": 48200,
+          "endMs": 53600,
+          "text": "Entendido. Te informo oficialmente de que voy a subir un grado."
+        }
+      ]
+    },
+    {
+      "sceneId": "SC002",
+      "setId": "kitchen",
+      "startMs": 54000,
+      "endMs": 108000,
+      "camera": [
+        {
+          "atMs": 54000,
+          "shot": "twoShot"
+        },
+        {
+          "atMs": 66000,
+          "shot": "mediumLeo"
+        },
+        {
+          "atMs": 78000,
+          "shot": "twoShot"
+        },
+        {
+          "atMs": 90000,
+          "shot": "closeVera"
+        },
+        {
+          "atMs": 102000,
+          "shot": "twoShot"
+        }
+      ],
+      "actions": [
+        {
+          "id": "AC006",
+          "type": "setExpression",
+          "actorId": "leo",
+          "expression": "thinking",
+          "atMs": 55000
+        },
+        {
+          "id": "AC007",
+          "type": "setExpression",
+          "actorId": "leo",
+          "expression": "annoyed",
+          "atMs": 66000
+        },
+        {
+          "id": "AC008",
+          "type": "setExpression",
+          "actorId": "leo",
+          "expression": "surprised",
+          "atMs": 77000
+        },
+        {
+          "id": "AC009",
+          "type": "setExpression",
+          "actorId": "leo",
+          "expression": "happy",
+          "atMs": 88000
+        },
+        {
+          "id": "AC010",
+          "type": "setExpression",
+          "actorId": "leo",
+          "expression": "skeptical",
+          "atMs": 99000
+        },
+        {
+          "id": "AC056",
+          "type": "gesture",
+          "actorId": "vera",
+          "gesture": "shrug",
+          "atMs": 86000,
+          "durationMs": 1800
+        }
+      ],
+      "dialogue": [
+        {
+          "lineId": "DL010",
+          "characterId": "vera",
+          "startMs": 54200,
+          "endMs": 59600,
+          "text": "Te he dicho que avises, no que conviertas el aviso en una provocación."
+        },
+        {
+          "lineId": "DL011",
+          "characterId": "leo",
+          "startMs": 60200,
+          "endMs": 65600,
+          "text": "No discuto: voy a colocar termómetros y aceptaré los hechos."
+        },
+        {
+          "lineId": "DL012",
+          "characterId": "vera",
+          "startMs": 66200,
+          "endMs": 71600,
+          "text": "¿Por qué hay uno dentro del bote del café?"
+        },
+        {
+          "lineId": "DL013",
+          "characterId": "leo",
+          "startMs": 72200,
+          "endMs": 77600,
+          "text": "Es una zona representativa de nuestra actividad cotidiana por la mañana."
+        },
+        {
+          "lineId": "DL014",
+          "characterId": "vera",
+          "startMs": 78200,
+          "endMs": 83600,
+          "text": "El café está a sesenta grados. Según tu informe, vivimos en un volcán."
+        },
+        {
+          "lineId": "DL015",
+          "characterId": "leo",
+          "startMs": 84200,
+          "endMs": 89600,
+          "text": "Bien visto. Deberíamos descartar los datos que tengan cafeína."
+        },
+        {
+          "lineId": "DL016",
+          "characterId": "vera",
+          "startMs": 90200,
+          "endMs": 95600,
+          "text": "También has puesto un termómetro al lado del horno encendido."
+        },
+        {
+          "lineId": "DL017",
+          "characterId": "leo",
+          "startMs": 96200,
+          "endMs": 101600,
+          "text": "Ese es el control positivo. Un experimento serio necesita extremos."
+        },
+        {
+          "lineId": "DL018",
+          "characterId": "vera",
+          "startMs": 102200,
+          "endMs": 107600,
+          "text": "Tu experimento confirma que el horno calienta. Enhorabuena, doctor invierno."
+        }
+      ]
+    },
+    {
+      "sceneId": "SC003",
+      "setId": "living-room",
+      "startMs": 108000,
+      "endMs": 162000,
+      "camera": [
+        {
+          "atMs": 108000,
+          "shot": "wide"
+        },
+        {
+          "atMs": 120000,
+          "shot": "mediumVera"
+        },
+        {
+          "atMs": 132000,
+          "shot": "twoShot"
+        },
+        {
+          "atMs": 144000,
+          "shot": "closeLeo"
+        },
+        {
+          "atMs": 156000,
+          "shot": "twoShot"
+        }
+      ],
+      "actions": [
+        {
+          "id": "AC011",
+          "type": "setExpression",
+          "actorId": "vera",
+          "expression": "annoyed",
+          "atMs": 109000
+        },
+        {
+          "id": "AC012",
+          "type": "setExpression",
+          "actorId": "vera",
+          "expression": "surprised",
+          "atMs": 120000
+        },
+        {
+          "id": "AC013",
+          "type": "setExpression",
+          "actorId": "vera",
+          "expression": "happy",
+          "atMs": 131000
+        },
+        {
+          "id": "AC014",
+          "type": "setExpression",
+          "actorId": "vera",
+          "expression": "skeptical",
+          "atMs": 142000
+        },
+        {
+          "id": "AC015",
+          "type": "setExpression",
+          "actorId": "vera",
+          "expression": "thinking",
+          "atMs": 153000
+        },
+        {
+          "id": "AC061",
+          "type": "gesture",
+          "actorId": "leo",
+          "gesture": "crossArms",
+          "atMs": 140000,
+          "durationMs": 1800
+        }
+      ],
+      "dialogue": [
+        {
+          "lineId": "DL019",
+          "characterId": "leo",
+          "startMs": 108200,
+          "endMs": 113600,
+          "text": "Propongo votarlo: tú eliges veintiuno, yo elijo veintitrés."
+        },
+        {
+          "lineId": "DL020",
+          "characterId": "vera",
+          "startMs": 114200,
+          "endMs": 119600,
+          "text": "Solo somos dos. Eso no es una votación; es un empate con radiadores."
+        },
+        {
+          "lineId": "DL021",
+          "characterId": "leo",
+          "startMs": 120200,
+          "endMs": 125600,
+          "text": "Podemos darle un voto al sofá. Es quien más tiempo pasa aquí."
+        },
+        {
+          "lineId": "DL022",
+          "characterId": "vera",
+          "startMs": 126200,
+          "endMs": 131600,
+          "text": "El sofá está tapizado. Siempre votará por el calor, no es imparcial."
+        },
+        {
+          "lineId": "DL023",
+          "characterId": "leo",
+          "startMs": 132200,
+          "endMs": 137600,
+          "text": "Entonces vota la planta. Lleva meses sufriendo nuestros desacuerdos."
+        },
+        {
+          "lineId": "DL024",
+          "characterId": "vera",
+          "startMs": 138200,
+          "endMs": 143600,
+          "text": "La planta es de plástico. Su opinión medioambiental está bastante comprometida."
+        },
+        {
+          "lineId": "DL025",
+          "characterId": "leo",
+          "startMs": 144200,
+          "endMs": 149600,
+          "text": "Podemos usar un algoritmo que calcule un compromiso aceptable."
+        },
+        {
+          "lineId": "DL026",
+          "characterId": "vera",
+          "startMs": 150200,
+          "endMs": 155600,
+          "text": "El compromiso entre veintiuno y veintitrés es veintidós. Lo estudiamos ayer."
+        },
+        {
+          "lineId": "DL027",
+          "characterId": "leo",
+          "startMs": 156200,
+          "endMs": 161600,
+          "text": "Sí, pero ayer no teníamos un algoritmo que cobrara honorarios."
+        }
+      ]
+    },
+    {
+      "sceneId": "SC004",
+      "setId": "bedroom",
+      "startMs": 162000,
+      "endMs": 216000,
+      "camera": [
+        {
+          "atMs": 162000,
+          "shot": "twoShot"
+        },
+        {
+          "atMs": 174000,
+          "shot": "mediumLeo"
+        },
+        {
+          "atMs": 186000,
+          "shot": "twoShot"
+        },
+        {
+          "atMs": 198000,
+          "shot": "closeVera"
+        },
+        {
+          "atMs": 210000,
+          "shot": "twoShot"
+        }
+      ],
+      "actions": [
+        {
+          "id": "AC016",
+          "type": "setExpression",
+          "actorId": "leo",
+          "expression": "surprised",
+          "atMs": 163000
+        },
+        {
+          "id": "AC017",
+          "type": "setExpression",
+          "actorId": "leo",
+          "expression": "happy",
+          "atMs": 174000
+        },
+        {
+          "id": "AC018",
+          "type": "setExpression",
+          "actorId": "leo",
+          "expression": "skeptical",
+          "atMs": 185000
+        },
+        {
+          "id": "AC019",
+          "type": "setExpression",
+          "actorId": "leo",
+          "expression": "thinking",
+          "atMs": 196000
+        },
+        {
+          "id": "AC020",
+          "type": "setExpression",
+          "actorId": "leo",
+          "expression": "annoyed",
+          "atMs": 207000
+        },
+        {
+          "id": "AC066",
+          "type": "gesture",
+          "actorId": "vera",
+          "gesture": "raiseHand",
+          "atMs": 194000,
+          "durationMs": 1800
+        }
+      ],
+      "dialogue": [
+        {
+          "lineId": "DL028",
+          "characterId": "leo",
+          "startMs": 162200,
+          "endMs": 167600,
+          "text": "He diseñado tres zonas de confort: salón templado, cocina neutra, dormitorio fresco."
+        },
+        {
+          "lineId": "DL029",
+          "characterId": "vera",
+          "startMs": 168200,
+          "endMs": 173600,
+          "text": "¿Y esa cinta adhesiva cruzando el pasillo?"
+        },
+        {
+          "lineId": "DL030",
+          "characterId": "leo",
+          "startMs": 174200,
+          "endMs": 179600,
+          "text": "Es la frontera entre dos microclimas. No pases sin aclimatarte."
+        },
+        {
+          "lineId": "DL031",
+          "characterId": "vera",
+          "startMs": 180200,
+          "endMs": 185600,
+          "text": "Leo, estás usando la misma calefacción para toda la casa."
+        },
+        {
+          "lineId": "DL032",
+          "characterId": "leo",
+          "startMs": 186200,
+          "endMs": 191600,
+          "text": "Por eso las fronteras son simbólicas. Generan sensación de control."
+        },
+        {
+          "lineId": "DL033",
+          "characterId": "vera",
+          "startMs": 192200,
+          "endMs": 197600,
+          "text": "La cinta está pegada a mis zapatillas. Ahora tengo doble nacionalidad."
+        },
+        {
+          "lineId": "DL034",
+          "characterId": "leo",
+          "startMs": 198200,
+          "endMs": 203600,
+          "text": "Podríamos crear pasaportes térmicos y sellarlos al entrar."
+        },
+        {
+          "lineId": "DL035",
+          "characterId": "vera",
+          "startMs": 204200,
+          "endMs": 209600,
+          "text": "Podríamos crear una sola norma: quitar la cinta del suelo."
+        },
+        {
+          "lineId": "DL036",
+          "characterId": "leo",
+          "startMs": 210200,
+          "endMs": 215600,
+          "text": "Vale, pero el dormitorio conserva su independencia hasta nueva reunión."
+        }
+      ]
+    },
+    {
+      "sceneId": "SC005",
+      "setId": "kitchen",
+      "startMs": 216000,
+      "endMs": 270000,
+      "camera": [
+        {
+          "atMs": 216000,
+          "shot": "wide"
+        },
+        {
+          "atMs": 228000,
+          "shot": "mediumVera"
+        },
+        {
+          "atMs": 240000,
+          "shot": "twoShot"
+        },
+        {
+          "atMs": 252000,
+          "shot": "closeLeo"
+        },
+        {
+          "atMs": 264000,
+          "shot": "twoShot"
+        }
+      ],
+      "actions": [
+        {
+          "id": "AC021",
+          "type": "setExpression",
+          "actorId": "vera",
+          "expression": "happy",
+          "atMs": 217000
+        },
+        {
+          "id": "AC022",
+          "type": "setExpression",
+          "actorId": "vera",
+          "expression": "skeptical",
+          "atMs": 228000
+        },
+        {
+          "id": "AC023",
+          "type": "setExpression",
+          "actorId": "vera",
+          "expression": "thinking",
+          "atMs": 239000
+        },
+        {
+          "id": "AC024",
+          "type": "setExpression",
+          "actorId": "vera",
+          "expression": "annoyed",
+          "atMs": 250000
+        },
+        {
+          "id": "AC025",
+          "type": "setExpression",
+          "actorId": "vera",
+          "expression": "surprised",
+          "atMs": 261000
+        },
+        {
+          "id": "AC071",
+          "type": "gesture",
+          "actorId": "leo",
+          "gesture": "point",
+          "atMs": 248000,
+          "durationMs": 1800
+        }
+      ],
+      "dialogue": [
+        {
+          "lineId": "DL037",
+          "characterId": "leo",
+          "startMs": 216200,
+          "endMs": 221600,
+          "text": "He preparado una aplicación que registra temperatura y humedad cada minuto."
+        },
+        {
+          "lineId": "DL038",
+          "characterId": "vera",
+          "startMs": 222200,
+          "endMs": 227600,
+          "text": "¿No era más sencillo ponernos una sudadera si teníamos frío?"
+        },
+        {
+          "lineId": "DL039",
+          "characterId": "leo",
+          "startMs": 228200,
+          "endMs": 233600,
+          "text": "Eso no escala. Mi sistema tiene gráficos y alertas inteligentes."
+        },
+        {
+          "lineId": "DL040",
+          "characterId": "vera",
+          "startMs": 234200,
+          "endMs": 239600,
+          "text": "¿Por qué acaba de avisarme de una emergencia climática?"
+        },
+        {
+          "lineId": "DL041",
+          "characterId": "leo",
+          "startMs": 240200,
+          "endMs": 245600,
+          "text": "El sensor de humedad está encima de la olla que hierve."
+        },
+        {
+          "lineId": "DL042",
+          "characterId": "vera",
+          "startMs": 246200,
+          "endMs": 251600,
+          "text": "El sistema cree que la cocina atraviesa un monzón."
+        },
+        {
+          "lineId": "DL043",
+          "characterId": "leo",
+          "startMs": 252200,
+          "endMs": 257600,
+          "text": "Entonces le pondré un paraguas al sensor y normalizamos el dato."
+        },
+        {
+          "lineId": "DL044",
+          "characterId": "vera",
+          "startMs": 258200,
+          "endMs": 263600,
+          "text": "No le pongas paraguas a un termómetro. Quítalo de la olla."
+        },
+        {
+          "lineId": "DL045",
+          "characterId": "leo",
+          "startMs": 264200,
+          "endMs": 269600,
+          "text": "Anoto una incidencia: el departamento de operaciones rechaza la innovación."
+        }
+      ]
+    },
+    {
+      "sceneId": "SC006",
+      "setId": "living-room",
+      "startMs": 270000,
+      "endMs": 324000,
+      "camera": [
+        {
+          "atMs": 270000,
+          "shot": "twoShot"
+        },
+        {
+          "atMs": 282000,
+          "shot": "mediumLeo"
+        },
+        {
+          "atMs": 294000,
+          "shot": "twoShot"
+        },
+        {
+          "atMs": 306000,
+          "shot": "closeVera"
+        },
+        {
+          "atMs": 318000,
+          "shot": "twoShot"
+        }
+      ],
+      "actions": [
+        {
+          "id": "AC026",
+          "type": "setExpression",
+          "actorId": "leo",
+          "expression": "skeptical",
+          "atMs": 271000
+        },
+        {
+          "id": "AC027",
+          "type": "setExpression",
+          "actorId": "leo",
+          "expression": "thinking",
+          "atMs": 282000
+        },
+        {
+          "id": "AC028",
+          "type": "setExpression",
+          "actorId": "leo",
+          "expression": "annoyed",
+          "atMs": 293000
+        },
+        {
+          "id": "AC029",
+          "type": "setExpression",
+          "actorId": "leo",
+          "expression": "surprised",
+          "atMs": 304000
+        },
+        {
+          "id": "AC030",
+          "type": "setExpression",
+          "actorId": "leo",
+          "expression": "happy",
+          "atMs": 315000
+        },
+        {
+          "id": "AC076",
+          "type": "gesture",
+          "actorId": "vera",
+          "gesture": "shrug",
+          "atMs": 302000,
+          "durationMs": 1800
+        }
+      ],
+      "dialogue": [
+        {
+          "lineId": "DL046",
+          "characterId": "vera",
+          "startMs": 270200,
+          "endMs": 275600,
+          "text": "Tu aplicación dice que hemos gastado veinte euros en sensores."
+        },
+        {
+          "lineId": "DL047",
+          "characterId": "leo",
+          "startMs": 276200,
+          "endMs": 281600,
+          "text": "Es una inversión. A largo plazo sabremos ahorrar calefacción."
+        },
+        {
+          "lineId": "DL048",
+          "characterId": "vera",
+          "startMs": 282200,
+          "endMs": 287600,
+          "text": "¿Y cuánto hemos ahorrado desde que empezaste tu estudio?"
+        },
+        {
+          "lineId": "DL049",
+          "characterId": "leo",
+          "startMs": 288200,
+          "endMs": 293600,
+          "text": "Todavía no se puede medir. El periodo de observación es insuficiente."
+        },
+        {
+          "lineId": "DL050",
+          "characterId": "vera",
+          "startMs": 294200,
+          "endMs": 299600,
+          "text": "También has comprado una tableta para consultar las temperaturas."
+        },
+        {
+          "lineId": "DL051",
+          "characterId": "leo",
+          "startMs": 300200,
+          "endMs": 305600,
+          "text": "Era necesaria. El móvil me daba una perspectiva demasiado pequeña."
+        },
+        {
+          "lineId": "DL052",
+          "characterId": "vera",
+          "startMs": 306200,
+          "endMs": 311600,
+          "text": "Con lo que has gastado podríamos calentar el piso toda la semana."
+        },
+        {
+          "lineId": "DL053",
+          "characterId": "leo",
+          "startMs": 312200,
+          "endMs": 317600,
+          "text": "Es cierto, pero no tendríamos esta información tan completa."
+        },
+        {
+          "lineId": "DL054",
+          "characterId": "vera",
+          "startMs": 318200,
+          "endMs": 323600,
+          "text": "La información principal es que tenemos frío y menos dinero."
+        }
+      ]
+    },
+    {
+      "sceneId": "SC007",
+      "setId": "bedroom",
+      "startMs": 324000,
+      "endMs": 378000,
+      "camera": [
+        {
+          "atMs": 324000,
+          "shot": "wide"
+        },
+        {
+          "atMs": 336000,
+          "shot": "mediumVera"
+        },
+        {
+          "atMs": 348000,
+          "shot": "twoShot"
+        },
+        {
+          "atMs": 360000,
+          "shot": "closeLeo"
+        },
+        {
+          "atMs": 372000,
+          "shot": "twoShot"
+        }
+      ],
+      "actions": [
+        {
+          "id": "AC031",
+          "type": "setExpression",
+          "actorId": "vera",
+          "expression": "thinking",
+          "atMs": 325000
+        },
+        {
+          "id": "AC032",
+          "type": "setExpression",
+          "actorId": "vera",
+          "expression": "annoyed",
+          "atMs": 336000
+        },
+        {
+          "id": "AC033",
+          "type": "setExpression",
+          "actorId": "vera",
+          "expression": "surprised",
+          "atMs": 347000
+        },
+        {
+          "id": "AC034",
+          "type": "setExpression",
+          "actorId": "vera",
+          "expression": "happy",
+          "atMs": 358000
+        },
+        {
+          "id": "AC035",
+          "type": "setExpression",
+          "actorId": "vera",
+          "expression": "skeptical",
+          "atMs": 369000
+        },
+        {
+          "id": "AC081",
+          "type": "gesture",
+          "actorId": "leo",
+          "gesture": "crossArms",
+          "atMs": 356000,
+          "durationMs": 1800
+        }
+      ],
+      "dialogue": [
+        {
+          "lineId": "DL055",
+          "characterId": "vera",
+          "startMs": 324200,
+          "endMs": 329600,
+          "text": "Hagamos una prueba: apagamos las pantallas y nos tapamos con una manta."
+        },
+        {
+          "lineId": "DL056",
+          "characterId": "leo",
+          "startMs": 330200,
+          "endMs": 335600,
+          "text": "Acepto, siempre que registremos la temperatura antes y después."
+        },
+        {
+          "lineId": "DL057",
+          "characterId": "vera",
+          "startMs": 336200,
+          "endMs": 341600,
+          "text": "La manta es de cuadros. No necesita un panel de estadísticas."
+        },
+        {
+          "lineId": "DL058",
+          "characterId": "leo",
+          "startMs": 342200,
+          "endMs": 347600,
+          "text": "Quiero demostrar que una solución simple puede superar a una compleja."
+        },
+        {
+          "lineId": "DL059",
+          "characterId": "vera",
+          "startMs": 348200,
+          "endMs": 353600,
+          "text": "Esa frase sería preciosa si no hubieras necesitado tres días para decirla."
+        },
+        {
+          "lineId": "DL060",
+          "characterId": "leo",
+          "startMs": 354200,
+          "endMs": 359600,
+          "text": "No han sido tres días. Solo cuarenta y ocho horas y nueve minutos."
+        },
+        {
+          "lineId": "DL061",
+          "characterId": "vera",
+          "startMs": 360200,
+          "endMs": 365600,
+          "text": "Ahora estás contando el tiempo que llevas defendiendo una manta."
+        },
+        {
+          "lineId": "DL062",
+          "characterId": "leo",
+          "startMs": 366200,
+          "endMs": 371600,
+          "text": "Es el primer dato verdaderamente útil de toda la investigación."
+        },
+        {
+          "lineId": "DL063",
+          "characterId": "vera",
+          "startMs": 372200,
+          "endMs": 377600,
+          "text": "Entonces escribe la conclusión: Vera tenía razón esta vez."
+        }
+      ]
+    },
+    {
+      "sceneId": "SC008",
+      "setId": "living-room",
+      "startMs": 378000,
+      "endMs": 432000,
+      "camera": [
+        {
+          "atMs": 378000,
+          "shot": "twoShot"
+        },
+        {
+          "atMs": 390000,
+          "shot": "mediumLeo"
+        },
+        {
+          "atMs": 402000,
+          "shot": "twoShot"
+        },
+        {
+          "atMs": 414000,
+          "shot": "closeVera"
+        },
+        {
+          "atMs": 426000,
+          "shot": "twoShot"
+        }
+      ],
+      "actions": [
+        {
+          "id": "AC036",
+          "type": "setExpression",
+          "actorId": "leo",
+          "expression": "annoyed",
+          "atMs": 379000
+        },
+        {
+          "id": "AC037",
+          "type": "setExpression",
+          "actorId": "leo",
+          "expression": "surprised",
+          "atMs": 390000
+        },
+        {
+          "id": "AC038",
+          "type": "setExpression",
+          "actorId": "leo",
+          "expression": "happy",
+          "atMs": 401000
+        },
+        {
+          "id": "AC039",
+          "type": "setExpression",
+          "actorId": "leo",
+          "expression": "skeptical",
+          "atMs": 412000
+        },
+        {
+          "id": "AC040",
+          "type": "setExpression",
+          "actorId": "leo",
+          "expression": "thinking",
+          "atMs": 423000
+        },
+        {
+          "id": "AC086",
+          "type": "gesture",
+          "actorId": "vera",
+          "gesture": "raiseHand",
+          "atMs": 410000,
+          "durationMs": 1800
+        }
+      ],
+      "dialogue": [
+        {
+          "lineId": "DL064",
+          "characterId": "leo",
+          "startMs": 378200,
+          "endMs": 383600,
+          "text": "Puede que tengas razón. He convertido un grado en una guerra territorial."
+        },
+        {
+          "lineId": "DL065",
+          "characterId": "vera",
+          "startMs": 384200,
+          "endMs": 389600,
+          "text": "Y yo he defendido el termostato como si fuera una frontera nacional."
+        },
+        {
+          "lineId": "DL066",
+          "characterId": "leo",
+          "startMs": 390200,
+          "endMs": 395600,
+          "text": "Pacto de paz: veintidós grados y derecho a usar sudadera."
+        },
+        {
+          "lineId": "DL067",
+          "characterId": "vera",
+          "startMs": 396200,
+          "endMs": 401600,
+          "text": "Con una condición: nadie vuelve a votar con la planta."
+        },
+        {
+          "lineId": "DL068",
+          "characterId": "leo",
+          "startMs": 402200,
+          "endMs": 407600,
+          "text": "Aceptado. Además, desde aquí parece que ya se nota el calor."
+        },
+        {
+          "lineId": "DL069",
+          "characterId": "vera",
+          "startMs": 408200,
+          "endMs": 413600,
+          "text": "Un momento. ¿Por qué se mueve esa cortina si todo está cerrado?"
+        },
+        {
+          "lineId": "DL070",
+          "characterId": "leo",
+          "startMs": 414200,
+          "endMs": 419600,
+          "text": "La ventana está entreabierta. La abrí para ventilar esta mañana."
+        },
+        {
+          "lineId": "DL071",
+          "characterId": "vera",
+          "startMs": 420200,
+          "endMs": 425600,
+          "text": "¿Has discutido conmigo dos horas por una ventana abierta?"
+        },
+        {
+          "lineId": "DL072",
+          "characterId": "leo",
+          "startMs": 426200,
+          "endMs": 431600,
+          "text": "No exactamente. Hemos avanzado mucho en cooperación y ciencia."
+        }
+      ]
+    },
+    {
+      "sceneId": "SC009",
+      "setId": "kitchen",
+      "startMs": 432000,
+      "endMs": 486000,
+      "camera": [
+        {
+          "atMs": 432000,
+          "shot": "wide"
+        },
+        {
+          "atMs": 444000,
+          "shot": "mediumVera"
+        },
+        {
+          "atMs": 456000,
+          "shot": "twoShot"
+        },
+        {
+          "atMs": 468000,
+          "shot": "closeLeo"
+        },
+        {
+          "atMs": 480000,
+          "shot": "twoShot"
+        }
+      ],
+      "actions": [
+        {
+          "id": "AC041",
+          "type": "setExpression",
+          "actorId": "vera",
+          "expression": "surprised",
+          "atMs": 433000
+        },
+        {
+          "id": "AC042",
+          "type": "setExpression",
+          "actorId": "vera",
+          "expression": "happy",
+          "atMs": 444000
+        },
+        {
+          "id": "AC043",
+          "type": "setExpression",
+          "actorId": "vera",
+          "expression": "skeptical",
+          "atMs": 455000
+        },
+        {
+          "id": "AC044",
+          "type": "setExpression",
+          "actorId": "vera",
+          "expression": "thinking",
+          "atMs": 466000
+        },
+        {
+          "id": "AC045",
+          "type": "setExpression",
+          "actorId": "vera",
+          "expression": "annoyed",
+          "atMs": 477000
+        },
+        {
+          "id": "AC091",
+          "type": "gesture",
+          "actorId": "leo",
+          "gesture": "point",
+          "atMs": 464000,
+          "durationMs": 1800
+        }
+      ],
+      "dialogue": [
+        {
+          "lineId": "DL073",
+          "characterId": "vera",
+          "startMs": 432200,
+          "endMs": 437600,
+          "text": "Voy a cerrar la ventana y tú vas a desconectar los sensores."
+        },
+        {
+          "lineId": "DL074",
+          "characterId": "leo",
+          "startMs": 438200,
+          "endMs": 443600,
+          "text": "De acuerdo. Pero quiero guardar el gráfico final como recuerdo."
+        },
+        {
+          "lineId": "DL075",
+          "characterId": "vera",
+          "startMs": 444200,
+          "endMs": 449600,
+          "text": "Puedes guardarlo. Solo no lo conviertas en una presentación familiar."
+        },
+        {
+          "lineId": "DL076",
+          "characterId": "leo",
+          "startMs": 450200,
+          "endMs": 455600,
+          "text": "¿Y si hacemos una diapositiva con los errores y aprendizajes?"
+        },
+        {
+          "lineId": "DL077",
+          "characterId": "vera",
+          "startMs": 456200,
+          "endMs": 461600,
+          "text": "La primera diapositiva sería una ventana abierta en noviembre."
+        },
+        {
+          "lineId": "DL078",
+          "characterId": "leo",
+          "startMs": 462200,
+          "endMs": 467600,
+          "text": "La segunda, dos adultos que prefieren debatir antes que comprobar."
+        },
+        {
+          "lineId": "DL079",
+          "characterId": "vera",
+          "startMs": 468200,
+          "endMs": 473600,
+          "text": "La tercera debería mostrar que todavía podemos reírnos de nosotros."
+        },
+        {
+          "lineId": "DL080",
+          "characterId": "leo",
+          "startMs": 474200,
+          "endMs": 479600,
+          "text": "Esa me gusta. Incluso pondría una foto nuestra con la manta."
+        },
+        {
+          "lineId": "DL081",
+          "characterId": "vera",
+          "startMs": 480200,
+          "endMs": 485600,
+          "text": "Perfecto, mientras no necesite contraseña para acceder a la foto."
+        }
+      ]
+    },
+    {
+      "sceneId": "SC010",
+      "setId": "living-room",
+      "startMs": 486000,
+      "endMs": 540000,
+      "camera": [
+        {
+          "atMs": 486000,
+          "shot": "twoShot"
+        },
+        {
+          "atMs": 498000,
+          "shot": "mediumLeo"
+        },
+        {
+          "atMs": 510000,
+          "shot": "twoShot"
+        },
+        {
+          "atMs": 522000,
+          "shot": "closeVera"
+        },
+        {
+          "atMs": 534000,
+          "shot": "twoShot"
+        }
+      ],
+      "actions": [
+        {
+          "id": "AC046",
+          "type": "setExpression",
+          "actorId": "leo",
+          "expression": "happy",
+          "atMs": 487000
+        },
+        {
+          "id": "AC047",
+          "type": "setExpression",
+          "actorId": "leo",
+          "expression": "skeptical",
+          "atMs": 498000
+        },
+        {
+          "id": "AC048",
+          "type": "setExpression",
+          "actorId": "leo",
+          "expression": "thinking",
+          "atMs": 509000
+        },
+        {
+          "id": "AC049",
+          "type": "setExpression",
+          "actorId": "leo",
+          "expression": "annoyed",
+          "atMs": 520000
+        },
+        {
+          "id": "AC050",
+          "type": "setExpression",
+          "actorId": "leo",
+          "expression": "surprised",
+          "atMs": 531000
+        },
+        {
+          "id": "AC096",
+          "type": "gesture",
+          "actorId": "vera",
+          "gesture": "shrug",
+          "atMs": 518000,
+          "durationMs": 1800
+        }
+      ],
+      "dialogue": [
+        {
+          "lineId": "DL082",
+          "characterId": "leo",
+          "startMs": 486200,
+          "endMs": 491600,
+          "text": "Ya está. Ventana cerrada, calefacción estable, sensores desconectados."
+        },
+        {
+          "lineId": "DL083",
+          "characterId": "vera",
+          "startMs": 492200,
+          "endMs": 497600,
+          "text": "Qué tranquilidad. Me había olvidado de lo agradable que es no medir nada."
+        },
+        {
+          "lineId": "DL084",
+          "characterId": "leo",
+          "startMs": 498200,
+          "endMs": 503600,
+          "text": "Hasta la planta parece más contenta. Y eso que no tiene opinión."
+        },
+        {
+          "lineId": "DL085",
+          "characterId": "vera",
+          "startMs": 504200,
+          "endMs": 509600,
+          "text": "Le he puesto un cartel: zona climática independiente y feliz."
+        },
+        {
+          "lineId": "DL086",
+          "characterId": "leo",
+          "startMs": 510200,
+          "endMs": 515600,
+          "text": "¿No habíamos quedado en dejar de crear países dentro del piso?"
+        },
+        {
+          "lineId": "DL087",
+          "characterId": "vera",
+          "startMs": 516200,
+          "endMs": 521600,
+          "text": "Solo es una república vegetal. No necesita presupuesto ni funcionarios."
+        },
+        {
+          "lineId": "DL088",
+          "characterId": "leo",
+          "startMs": 522200,
+          "endMs": 527600,
+          "text": "Mañana le pones una aduana y acabamos pagando impuestos por regarla."
+        },
+        {
+          "lineId": "DL089",
+          "characterId": "vera",
+          "startMs": 528200,
+          "endMs": 533600,
+          "text": "No seas exagerada. Las aduanas las había reservado para los calcetines."
+        },
+        {
+          "lineId": "DL090",
+          "characterId": "leo",
+          "startMs": 534200,
+          "endMs": 539600,
+          "text": "Ven aquí, ministro del invierno. Te voy a confiscar una manta."
+        }
+      ]
+    }
+  ]
+}

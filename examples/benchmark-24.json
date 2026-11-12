@@ -1,0 +1,121 @@
+{
+  "schemaVersion": "1.0",
+  "episodeId": "EPBENCH24",
+  "title": "24-second full HD renderer benchmark - diagnostic only",
+  "sourceLocale": "es-ES",
+  "canvas": {
+    "width": 1280,
+    "height": 720
+  },
+  "fps": 30,
+  "durationMs": 24000,
+  "scenes": [
+    {
+      "sceneId": "SC001",
+      "setId": "living-room",
+      "startMs": 0,
+      "endMs": 24000,
+      "camera": [
+        {
+          "atMs": 0,
+          "shot": "wide"
+        },
+        {
+          "atMs": 8000,
+          "shot": "mediumLeo"
+        },
+        {
+          "atMs": 14500,
+          "shot": "mediumVera"
+        },
+        {
+          "atMs": 20500,
+          "shot": "twoShot"
+        }
+      ],
+      "actions": [
+        {
+          "id": "AC001",
+          "type": "setExpression",
+          "actorId": "leo",
+          "expression": "happy",
+          "atMs": 0
+        },
+        {
+          "id": "AC002",
+          "type": "lookAt",
+          "actorId": "leo",
+          "targetId": "vera",
+          "atMs": 0
+        },
+        {
+          "id": "AC003",
+          "type": "lookAt",
+          "actorId": "vera",
+          "targetId": "leo",
+          "atMs": 0
+        },
+        {
+          "id": "AC004",
+          "type": "setExpression",
+          "actorId": "vera",
+          "expression": "skeptical",
+          "atMs": 5500
+        },
+        {
+          "id": "AC005",
+          "type": "gesture",
+          "actorId": "leo",
+          "gesture": "raiseHand",
+          "atMs": 10000,
+          "durationMs": 2800
+        },
+        {
+          "id": "AC006",
+          "type": "setExpression",
+          "actorId": "vera",
+          "expression": "annoyed",
+          "atMs": 16000
+        },
+        {
+          "id": "AC007",
+          "type": "gesture",
+          "actorId": "vera",
+          "gesture": "crossArms",
+          "atMs": 21500,
+          "durationMs": 2500
+        }
+      ],
+      "dialogue": [
+        {
+          "lineId": "DL001",
+          "characterId": "leo",
+          "startMs": 800,
+          "endMs": 4550,
+          "text": "He resuelto el problema de las contraseñas de casa."
+        },
+        {
+          "lineId": "DL002",
+          "characterId": "vera",
+          "startMs": 5350,
+          "endMs": 7800,
+          "text": "¿Qué problema?"
+        },
+        {
+          "lineId": "DL003",
+          "characterId": "leo",
+          "startMs": 8950,
+          "endMs": 14300,
+          "text": "Que siempre las olvidamos. He diseñado un protocolo familiar."
+        },
+        {
+          "lineId": "DL004",
+          "characterId": "vera",
+          "startMs": 15450,
+          "endMs": 19800,
+          "text": "Leo, es la contraseña del wifi, no la de un submarino nuclear."
+        }
+      ]
+    }
+  ]
+}

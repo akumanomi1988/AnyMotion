@@ -1,0 +1,74 @@
+{
+  "schemaVersion": "1.0",
+  "episodeId": "EP0001",
+  "title": "La contraseña compartida",
+  "sourceLocale": "es-ES",
+  "canvas": { "width": 1280, "height": 720 },
+  "fps": 30,
+  "durationMs": 78000,
+  "scenes": [
+    {
+      "sceneId": "SC001",
+      "setId": "living-room",
+      "startMs": 0,
+      "endMs": 37000,
+      "camera": [
+        { "atMs": 0, "shot": "wide" },
+        { "atMs": 8000, "shot": "mediumLeo" },
+        { "atMs": 14500, "shot": "mediumVera" },
+        { "atMs": 20500, "shot": "twoShot" },
+        { "atMs": 31500, "shot": "closeLeo" }
+      ],
+      "actions": [
+        { "id": "AC001", "type": "setExpression", "actorId": "leo", "expression": "happy", "atMs": 0 },
+        { "id": "AC002", "type": "lookAt", "actorId": "leo", "targetId": "vera", "atMs": 0 },
+        { "id": "AC003", "type": "lookAt", "actorId": "vera", "targetId": "leo", "atMs": 0 },
+        { "id": "AC004", "type": "setExpression", "actorId": "vera", "expression": "skeptical", "atMs": 5500 },
+        { "id": "AC005", "type": "gesture", "actorId": "leo", "gesture": "raiseHand", "atMs": 10000, "durationMs": 2800 },
+        { "id": "AC006", "type": "setExpression", "actorId": "vera", "expression": "annoyed", "atMs": 16000 },
+        { "id": "AC007", "type": "gesture", "actorId": "vera", "gesture": "crossArms", "atMs": 21500, "durationMs": 2500 },
+        { "id": "AC008", "type": "setExpression", "actorId": "leo", "expression": "thinking", "atMs": 33000 }
+      ],
+      "dialogue": [
+        { "lineId": "DL001", "characterId": "leo", "startMs": 800, "endMs": 4550, "text": "He resuelto el problema de las contraseñas de casa." },
+        { "lineId": "DL002", "characterId": "vera", "startMs": 5350, "endMs": 7800, "text": "¿Qué problema?" },
+        { "lineId": "DL003", "characterId": "leo", "startMs": 8950, "endMs": 14300, "text": "Que siempre las olvidamos. He diseñado un protocolo familiar." },
+        { "lineId": "DL004", "characterId": "vera", "startMs": 15450, "endMs": 19800, "text": "Leo, es la contraseña del wifi, no la de un submarino nuclear." },
+        { "lineId": "DL005", "characterId": "leo", "startMs": 20900, "endMs": 26100, "text": "Precisamente. Cada dispositivo tendrá su nivel de acceso." },
+        { "lineId": "DL006", "characterId": "vera", "startMs": 27400, "endMs": 31700, "text": "¿Y dónde se apunta la contraseña principal?" },
+        { "lineId": "DL007", "characterId": "leo", "startMs": 32900, "endMs": 36100, "text": "En un archivo protegido con otra contraseña." }
+      ]
+    },
+    {
+      "sceneId": "SC002",
+      "setId": "living-room",
+      "startMs": 37000,
+      "endMs": 78000,
+      "camera": [
+        { "atMs": 37000, "shot": "twoShot" },
+        { "atMs": 45500, "shot": "closeVera" },
+        { "atMs": 56500, "shot": "wide" },
+        { "atMs": 65000, "shot": "closeLeo" },
+        { "atMs": 71000, "shot": "wide" }
+      ],
+      "actions": [
+        { "id": "AC009", "type": "setExpression", "actorId": "vera", "expression": "thinking", "atMs": 37000 },
+        { "id": "AC010", "type": "setExpression", "actorId": "leo", "expression": "happy", "atMs": 37000 },
+        { "id": "AC011", "type": "gesture", "actorId": "leo", "gesture": "point", "atMs": 45800, "durationMs": 2900 },
+        { "id": "AC012", "type": "setExpression", "actorId": "vera", "expression": "surprised", "atMs": 50500 },
+        { "id": "AC013", "type": "setExpression", "actorId": "vera", "expression": "annoyed", "atMs": 62000 },
+        { "id": "AC014", "type": "setExpression", "actorId": "leo", "expression": "surprised", "atMs": 69500 },
+        { "id": "AC015", "type": "gesture", "actorId": "leo", "gesture": "shrug", "atMs": 71500, "durationMs": 2600 }
+      ],
+      "dialogue": [
+        { "lineId": "DL008", "characterId": "vera", "startMs": 38500, "endMs": 42700, "text": "A ver si lo entiendo. Para entrar al wifi, necesito una clave." },
+        { "lineId": "DL009", "characterId": "leo", "startMs": 43900, "endMs": 49900, "text": "Primero, autenticarte. Después recibes un código temporal." },
+        { "lineId": "DL010", "characterId": "vera", "startMs": 51000, "endMs": 56000, "text": "¿Y el código cómo llega si no tengo wifi?" },
+        { "lineId": "DL011", "characterId": "leo", "startMs": 57900, "endMs": 62400, "text": "Por correo electrónico. Es un sistema muy seguro." },
+        { "lineId": "DL012", "characterId": "vera", "startMs": 63700, "endMs": 68300, "text": "Me voy a casa de mi madre. Allí solo hay una contraseña." },
+        { "lineId": "DL013", "characterId": "leo", "startMs": 69300, "endMs": 73900, "text": "¿Me la puedes pedir? Es para la actualización del protocolo." },
+        { "lineId": "DL014", "characterId": "vera", "startMs": 75600, "endMs": 77500, "text": "No." }
+      ]
+    }
+  ]
+}

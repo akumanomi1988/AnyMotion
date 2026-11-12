@@ -1,0 +1,265 @@
+/** Reproducible offline dubbing. eSpeak is a diagnostic voice adapter, not final editorial TTS. */
+import { readFile, writeFile, mkdir, rm, rename, stat, copyFile, constants } from 'node:fs/promises';
+import {createReadStream} from 'node:fs';
+import { join, resolve, dirname } from 'node:path';
+import { createHash } from 'node:crypto';
+import { spawn } from 'node:child_process';
+import { allDialogue, validateEpisode, type CharacterId, type DialogueLine, type Episode } from '../core/contracts.js';
+import { serializeSrt } from '../core/subtitles.js';
+import { withinRoot } from '../core/filenames.js';
+import {configuredHttpTts,type HttpTtsProvider} from './tts-http.js';
+import {mixSoundtrack,verifySoundscape} from './soundscape.js';
+
+const SAMPLE_RATE = 24000;
+const MAX_TEMPO = 1.2;
+const supportedLocales = ['es-ES', 'en-US'] as const;
+export type Locale = typeof supportedLocales[number];
+export interface Localization { schemaVersion: '1.0'; episodeId: string; locale: Locale; lines: Record<string, string> }
+export interface VoiceClipReport { lineId: string; characterId: CharacterId; sourceDurationMs: number; fittedDurationMs: number; windowMs: number; speakingRate: number; tempo: number; clipped: false }
+export interface DubManifest { schemaVersion: '1.0'; status: 'LOCALIZED'; episodeId: string; locale: Locale; provider: string; timelineSha256: string; localizationSha256: string; soundtrackManifestSha256?: string; clips: VoiceClipReport[]; files: Record<string,string>; }
+
+export function validateLocalization(input: unknown, episode: Episode, locale: Locale): Localization {
+  if (typeof input !== 'object' || input === null || Array.isArray(input)) throw new Error('Localization must be an object');
+  const raw = input as Record<string, unknown>;
+  if (Object.keys(raw).sort().join(',') !== 'episodeId,lines,locale,schemaVersion') throw new Error('Unknown or missing localization fields');
+  if (raw.schemaVersion !== '1.0' || raw.episodeId !== episode.episodeId || raw.locale !== locale) throw new Error('Localization identity/version mismatch');
+  const lines = raw.lines;
+  if (!lines || typeof lines !== 'object' || Array.isArray(lines)) throw new Error('Localization lines must be an object');
+  const expected = allDialogue(episode).map(line => line.lineId).sort();
+  const actual = Object.keys(lines).sort();
+  if (JSON.stringify(expected) !== JSON.stringify(actual)) throw new Error('Localization must cover exactly the source line IDs');
+  for (const [id, text] of Object.entries(lines)) {
+    if (typeof text !== 'string' || !text.trim() || text.length > 1000 || /[\u0000-\u0008\u000B-\u001F]/.test(text)) throw new Error(`Invalid localized line: ${id}`);
+  }
+  return input as Localization;
+}
+
+/** Never invoke shell. Text is passed as exactly one argument. */
+export async function runTool(exe: string, args: string[], timeoutMs = 120_000): Promise<string> {
+  return new Promise((resolvePromise, reject) => {
+    const child = spawn(exe, args, { shell: false, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    let output = '', error = '', settled = false;
+    const timer = setTimeout(() => { child.kill('SIGKILL'); finish(new Error(`${exe} timed out`)); }, timeoutMs);
+    const finish = (problem?: Error) => {
+      if (settled) return;
+      settled = true; clearTimeout(timer);
+      if (problem) reject(problem); else resolvePromise(output);
+    };
+    child.stdout.on('data', (buffer: Buffer) => { output = (output + buffer.toString()).slice(-1_000_000); });
+    child.stderr.on('data', (buffer: Buffer) => { error = (error + buffer.toString()).slice(-8_000); });
+    child.once('error', err => finish(err));
+    child.once('close', code => finish(code === 0 ? undefined : new Error(`${exe} exited ${code}: ${error}`)));
+  });
+}
+
+function clipVoice(locale: Locale, speaker: CharacterId): string {
+  return `${locale === 'es-ES' ? 'es' : 'en-us'}+${speaker === 'vera' ? 'f3' : 'm3'}`;
+}
+
+interface Pcm16Wave { sampleRate: number; samples: Buffer }
+/** Parse strict RIFF/PCM16 safely: direct playback avoids a child process per TTS line. */
+export function parsePcm16Wave(data: Buffer): Pcm16Wave | null {
+  if(data.length<12||data.toString('ascii',0,4)!=='RIFF'||data.toString('ascii',8,12)!=='WAVE')return null;
+  const declared=data.readUInt32LE(4)+8;
+  if(declared>data.length||declared<44)throw new Error('Malformed WAV RIFF size');
+  let cursor=12, sampleRate=0, channels=0, bits=0, format=0, blockAlign=0;
+  let sound:Buffer|undefined;
+  while(cursor+8<=declared){
+    const name=data.toString('ascii',cursor,cursor+4),length=data.readUInt32LE(cursor+4);
+    const start=cursor+8,end=start+length;
+    if(end>declared||end<start)throw new Error('Invalid WAV chunk length');
+    if(name==='fmt '){
+      if(length<16||sampleRate)throw new Error('Invalid or duplicate WAV fmt chunk');
+      format=data.readUInt16LE(start);channels=data.readUInt16LE(start+2);sampleRate=data.readUInt32LE(start+4);
+      blockAlign=data.readUInt16LE(start+12);bits=data.readUInt16LE(start+14);
+    }
+    if(name==='data'){
+      if(sound)throw new Error('Duplicate WAV data chunk');
+      sound=data.subarray(start,end);
+    }
+    cursor=end+(length%2);
+  }
+  if(format!==1||channels!==1||bits!==16||blockAlign!==2||sampleRate<8000||sampleRate>96000)return null;
+  if(!sound||sound.length%2!==0||!sound.length)throw new Error('Invalid WAV PCM audio data');
+  return {sampleRate,samples:sound};
+}
+
+async function measuredVoice(wav: string): Promise<{durationMs:number;pcm: Pcm16Wave|null}> {
+  const source=await readFile(wav);
+  if(source.length>40*1024*1024)throw new Error('Single TTS clip is oversized');
+  const pcm=parsePcm16Wave(source);
+  let ms:number;
+  if(pcm)ms=Math.round(pcm.samples.length*1000/(pcm.sampleRate*2));
+  else {
+    const result=JSON.parse(await runTool('ffprobe',['-v','error','-show_entries','format=duration','-of','json',wav])) as {format:{duration:string}};
+    ms=Math.round(Number(result.format.duration)*1000);
+  }
+  if(!Number.isSafeInteger(ms)||ms<=0)throw new Error(`TTS returned invalid duration: ${wav}`);
+  return {durationMs:ms,pcm};
+}
+
+function pcmWave(samples: Buffer): Buffer {
+  const header = Buffer.alloc(44);
+  header.write('RIFF', 0); header.writeUInt32LE(samples.length + 36, 4);
+  header.write('WAVEfmt ', 8); header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20); header.writeUInt16LE(1, 22);
+  header.writeUInt32LE(SAMPLE_RATE, 24); header.writeUInt32LE(SAMPLE_RATE * 2, 28);
+  header.writeUInt16LE(2, 32); header.writeUInt16LE(16, 34);
+  header.write('data', 36); header.writeUInt32LE(samples.length, 40);
+  return Buffer.concat([header, samples]);
+}
+
+async function exist(filename: string): Promise<boolean> { try { await stat(filename); return true; } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false; throw error; } }
+const hash = (buffer: Buffer | string): string => createHash('sha256').update(buffer).digest('hex');
+async function hashFile(file:string):Promise<string>{const d=createHash('sha256');for await(const part of createReadStream(file))d.update(part);return d.digest('hex');}
+
+/** Fail closed on duration overflow. Never truncate and never silently change the timeline. */
+export async function dubEpisode(episodeInput: Episode, localizationInput: unknown, locale: Locale, root = resolve(process.cwd()), optionalProvider?:HttpTtsProvider): Promise<DubManifest> {
+  const episode = validateEpisode(episodeInput);
+  const localization = validateLocalization(localizationInput, episode, locale);
+  const provider = optionalProvider ?? configuredHttpTts();
+  const providerId=process.env.ANYMOTION_TEST_VOICE==='synthetic'?'synthetic-ci-test':provider?.providerId ?? 'espeak-diagnostic';
+  const soundscape=await verifySoundscape(episode,root);
+  const soundHash=soundscape?.manifestHash;
+  const base = withinRoot(root, join('productions', episode.episodeId));
+  const finalDir = withinRoot(base, join('locales', locale));
+  const completed = join(finalDir, 'dub-manifest.json');
+  const jsonDigest = hash(JSON.stringify(episode));
+  const localeDigest = hash(JSON.stringify(localization));
+  if (await exist(completed)) {
+    const prev = JSON.parse(await readFile(completed, 'utf8')) as DubManifest;
+    if (prev.provider!==providerId || prev.timelineSha256 !== jsonDigest || prev.localizationSha256 !== localeDigest || prev.soundtrackManifestSha256!==soundHash) throw new Error('Inputs changed; existing localized artifact cannot be reused');
+    for (const [name, digest] of Object.entries(prev.files)) {
+      const actual = await hashFile(join(finalDir, name));
+      if (actual !== digest) throw new Error(`Localized artifact has been modified: ${name}`);
+    }
+    return prev;
+  }
+  // Avoid partial output: all work happens under a unique, temporary directory.
+  const tmp = withinRoot(root, join('workspace', 'temp', `${episode.episodeId}-${locale}-${process.pid}-${Date.now()}`));
+  await mkdir(tmp, {recursive:true});
+  const clips: VoiceClipReport[] = [];
+  try {
+    const audio = Buffer.alloc(Math.ceil(episode.durationMs * SAMPLE_RATE / 1000) * 2);
+    const rendered: DialogueLine[] = [];
+    for (const line of allDialogue(episode)) {
+      const text = localization.lines[line.lineId]!;
+      const allowedMs = line.endMs - line.startMs;
+      const source = join(tmp, `${line.lineId}.wav`);
+      let duration = 0;
+      let sourcePcm:Pcm16Wave|null=null;
+      let speakingRate = 205;
+      if (process.env.ANYMOTION_TEST_VOICE === 'synthetic') {
+        // CI-only deterministic synthetic tone. It deliberately never simulates intelligible speech.
+        const sampleCount = SAMPLE_RATE; // exactly one second, shorter than every pilot cue
+        const pcm=Buffer.alloc(sampleCount*2);
+        const frequency=line.characterId==='vera'?300:220;
+        for(let i=0;i<sampleCount;i++){
+          const fade=Math.min(1,i/300,(sampleCount-i-1)/300);
+          pcm.writeInt16LE(Math.round(1300*fade*Math.sin(2*Math.PI*frequency*i/SAMPLE_RATE)),i*2);
+        }
+        await writeFile(source,pcmWave(pcm));
+        ({durationMs:duration,pcm:sourcePcm}=await measuredVoice(source));
+      } else if(provider){
+        for(const speed of [1,1.08,1.16]){
+          speakingRate=Math.round(speed*100);
+          await rm(source,{force:true});
+          await provider.synthesize(text,locale,line.characterId,source,speed);
+          ({durationMs:duration,pcm:sourcePcm}=await measuredVoice(source));
+          if(duration<=allowedMs*MAX_TEMPO)break;
+        }
+      } else {
+        for (const rate of [205, 230, 250, 270]) {
+          speakingRate = rate;
+          await runTool('espeak', ['-v', clipVoice(locale, line.characterId), '-s', String(rate), '-w', source, text]);
+          ({durationMs:duration,pcm:sourcePcm}=await measuredVoice(source));
+          if (duration <= allowedMs * MAX_TEMPO) break;
+        }
+      }
+      const tempo = Math.max(1, duration / allowedMs);
+      if (tempo > MAX_TEMPO + .00001) throw new Error(`${line.lineId} exceeds ${allowedMs}ms dialogue window; measured ${duration}ms at max voice speed. Rewrite line or refreeze timeline.`);
+      const pcm = join(tmp, `${line.lineId}.pcm`);
+      let raw:Buffer;
+      if(sourcePcm?.sampleRate===SAMPLE_RATE && tempo<=1.000001){
+        // A validated 24kHz mono WAV is already output-ready, saving two process spawns per line.
+        raw=sourcePcm.samples;
+      }else{
+        await runTool('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-nostdin', '-y', '-i', source, '-af', `atempo=${tempo.toFixed(5)},aresample=${SAMPLE_RATE}`, '-ac', '1', '-ar', String(SAMPLE_RATE), '-f', 's16le', pcm]);
+        raw=await readFile(pcm);
+      }
+      const samples = Math.floor(raw.length / 2);
+      const offset = Math.round(line.startMs * SAMPLE_RATE / 1000);
+      const permitted = Math.round(allowedMs * SAMPLE_RATE / 1000);
+      if (samples > permitted + 3) throw new Error(`${line.lineId} audio exceeds window after tempo fit`);
+      for (let i = 0; i < samples; i++) {
+        const envelope = Math.min(1, i / (SAMPLE_RATE * .012), (samples - i - 1) / (SAMPLE_RATE * .012));
+        const sample = Math.round(raw.readInt16LE(i * 2) * envelope * .66);
+        const dest = (offset + i) * 2;
+        if (dest + 1 >= audio.length) throw new Error(`Audio beyond episode: ${line.lineId}`);
+        const mixed = Math.max(-32768, Math.min(32767, audio.readInt16LE(dest) + sample));
+        audio.writeInt16LE(mixed, dest);
+      }
+      await rm(pcm,{force:true}); // PCM is a scratch intermediate; keep the source WAV for selective regeneration.
+      clips.push({lineId:line.lineId, characterId:line.characterId, sourceDurationMs:duration, fittedDurationMs:Math.round(samples * 1000 / SAMPLE_RATE), windowMs:allowedMs, speakingRate, tempo:Number(tempo.toFixed(5)), clipped:false});
+      rendered.push({...line, text});
+    }
+    const dialogueWav=pcmWave(audio);
+    await writeFile(join(tmp, 'dialogue.wav'),dialogueWav);
+    await writeFile(join(tmp, 'full_audio.wav'),soundscape?mixSoundtrack(dialogueWav,soundscape.music,soundscape.sfx,episode.durationMs):dialogueWav);
+    for (const actor of ['vera', 'leo'] as const) await writeFile(join(tmp, `${actor}.srt`), serializeSrt(rendered.filter(line => line.characterId === actor)));
+    await writeFile(join(tmp, 'combined.srt'), serializeSrt(rendered, true));
+    await writeFile(join(tmp, 'speech-fit-report.json'), JSON.stringify({schemaVersion:'1.0', provider:providerId, locale, clips}, null, 2)+'\n');
+    const fileNames = ['dialogue.wav','full_audio.wav','vera.srt','leo.srt','combined.srt','speech-fit-report.json',...clips.map(c=>`${c.lineId}.wav`)];
+    const files: Record<string,string> = {};
+    for (const name of fileNames) files[name] = await hashFile(join(tmp, name));
+    const manifest: DubManifest = {schemaVersion:'1.0',status:'LOCALIZED',episodeId:episode.episodeId,locale, provider:providerId, timelineSha256:jsonDigest,localizationSha256:localeDigest,...(soundHash?{soundtrackManifestSha256:soundHash}:{}),clips,files};
+    await writeFile(join(tmp, 'dub-manifest.json'), JSON.stringify(manifest,null,2)+'\n');
+    await mkdir(dirname(finalDir),{recursive:true});
+    if (await exist(finalDir)) {
+      // SRTs may already have been exported by the renderer. Preserve identical files.
+      // Refuse conflicting content instead of overwriting a validated artifact.
+      for (const name of [...fileNames, 'dub-manifest.json']) {
+        const dest = join(finalDir, name);
+        const staged = await readFile(join(tmp, name));
+        if (await exist(dest) && !staged.equals(await readFile(dest))) throw new Error(`Conflict with existing localized artifact: ${dest}`);
+      }
+      for (const name of [...fileNames, 'dub-manifest.json']) {
+        if (!(await exist(join(finalDir,name)))) await copyFile(join(tmp,name),join(finalDir,name),constants.COPYFILE_EXCL);
+      }
+    } else await rename(tmp, finalDir);
+    return manifest;
+  } finally { await rm(tmp,{force:true,recursive:true}); }
+}
+
+/** Mux the same silent master with a localized audio stem. Never re-render scene frames. */
+export async function muxDubbedVideo(episode: Episode, locale: Locale, preset: 'preview' | 'final' = 'preview', root = resolve(process.cwd())): Promise<string> {
+  const base = withinRoot(root, join('productions', episode.episodeId));
+  const master = join(base, preset, 'silent.mp4');
+  const localeDir = join(base, 'locales', locale);
+  const manifest = JSON.parse(await readFile(join(localeDir, 'dub-manifest.json'), 'utf8')) as DubManifest;
+  if (manifest.timelineSha256 !== hash(JSON.stringify(validateEpisode(episode)))) throw new Error('Timeline changed after dub');
+  const output = join(localeDir, `final_${preset}.mp4`);
+  const verificationFile = join(localeDir, `mux_${preset}.json`);
+  const inputHash = hash(`${await hashFile(master)}:${await hashFile(join(localeDir,'full_audio.wav'))}:${manifest.timelineSha256}`);
+  if (await exist(output)) {
+    if (!(await exist(verificationFile))) throw new Error(`Video exists without verifiable mux manifest: ${output}`);
+    const previous=JSON.parse(await readFile(verificationFile,'utf8')) as {inputHash:string;outputHash:string};
+    if (previous.inputHash !== inputHash || previous.outputHash !== await hashFile(output)) throw new Error('Mux inputs or output changed; create a new revision');
+    return output;
+  }
+  const tmp = `${output}.${process.pid}.tmp.mp4`;
+  try {
+    await runTool('ffmpeg', ['-hide_banner','-loglevel','error','-nostdin','-y','-i',master,'-i',join(localeDir,'full_audio.wav'),'-map','0:v:0','-map','1:a:0','-c:v','copy','-c:a','aac','-b:a','160k','-t',(episode.durationMs/1000).toString(),'-movflags','+faststart',tmp],600_000);
+    const raw = await runTool('ffprobe',['-v','error','-show_entries','stream=codec_type,codec_name','-show_entries','format=duration','-of','json',tmp]);
+    const result = JSON.parse(raw) as {streams:{codec_type:string}[];format:{duration:string}};
+    if (!result.streams.some(s=>s.codec_type==='video') || !result.streams.some(s=>s.codec_type==='audio') || Math.abs(Number(result.format.duration) - episode.durationMs/1000) > .06) throw new Error('Muxed video fails media QA');
+    const outputHash=await hashFile(tmp);
+    await rename(tmp,output);
+    await writeFile(verificationFile,JSON.stringify({schemaVersion:'1.0',preset,episodeId:episode.episodeId,locale,inputHash,outputHash,durationMs:episode.durationMs,technicalPass:true},null,2)+'\n',{flag:'wx'});
+    return output;
+  } finally {await rm(tmp,{force:true});}
+}
+
+export function sourceLocalization(episode: Episode): Localization {
+  return {schemaVersion:'1.0',episodeId:episode.episodeId,locale:'es-ES',lines:Object.fromEntries(allDialogue(episode).map(l => [l.lineId,l.text]))};
+}

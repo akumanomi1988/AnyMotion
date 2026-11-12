@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "1.0",
+  "episodeId": "EP0002",
+  "music": { "introMs": 3000, "outroMs": 4000, "gain": 0.045 },
+  "cues": [
+    { "id": "FX001", "effect": "tap", "atMs": 48500, "gain": 0.085 },
+    { "id": "FX002", "effect": "swish", "atMs": 100200, "gain": 0.055 },
+    { "id": "FX003", "effect": "pop", "atMs": 156000, "gain": 0.080 },
+    { "id": "FX004", "effect": "tap", "atMs": 219700, "gain": 0.09 },
+    { "id": "FX005", "effect": "chime", "atMs": 266000, "gain": 0.055 },
+    { "id": "FX006", "effect": "swish", "atMs": 322500, "gain": 0.075 },
+    { "id": "FX007", "effect": "pop", "atMs": 376400, "gain": 0.09 },
+    { "id": "FX008", "effect": "tap", "atMs": 430000, "gain": 0.07 },
+    { "id": "FX009", "effect": "chime", "atMs": 483200, "gain": 0.055 }
+  ]
+}

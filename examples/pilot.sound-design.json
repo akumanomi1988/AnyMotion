@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "1.0",
+  "episodeId": "EP0001",
+  "music": { "introMs": 2200, "outroMs": 2600, "gain": 0.05 },
+  "cues": [
+    { "id": "FX001", "effect": "tap", "atMs": 9800, "gain": 0.12 },
+    { "id": "FX002", "effect": "pop", "atMs": 26400, "gain": 0.11 },
+    { "id": "FX003", "effect": "swish", "atMs": 43300, "gain": 0.06 },
+    { "id": "FX004", "effect": "chime", "atMs": 63700, "gain": 0.075 }
+  ]
+}
