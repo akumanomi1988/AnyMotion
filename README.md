@@ -322,3 +322,15 @@ node dist/cli.js rights-check examples/pilot.json
 The rights attestation is not a legal certificate. It records a human's assertion after reviewing underlying rights and licenses. Changing the release, any claimed material or the attestation invalidates editorial approval; a new episode revision and new authorization are required. Do not run `rights-attest` for preview content or diagnostic voices to circumvent publication protections.
 
 See [ADR-0003](docs/decisions/ADR-0003-release-rights-ledger.md) for coverage and limitations.
+
+
+## F2 — Auditar un proveedor LLM real
+
+Para comprobar el protocolo OpenAI-compatible con **una única llamada potencialmente facturable**, configurar `ANYMOTION_LLM_ENDPOINT`, `ANYMOTION_LLM_MODEL` y `ANYMOTION_LLM_API_KEY` (HTTPS o loopback) y ejecutar:
+
+```sh
+npm run build
+npm run audit:llm -- --confirm I_ACCEPT_LLM_COSTS
+```
+
+El resultado queda en `workspace/llm-probes/<huella>/provider-audit.json` sin claves privadas. Repetir la prueba con el mismo modelo/endpoint no vuelve a efectuar llamadas. **Esta evidencia prueba solo el protocolo JSON, no la calidad narrativa**; F2 sigue pendiente de ejecutar y revisar un episodio de 8–10 minutos creado mediante un LLM real. Más detalles: `docs/runbooks/llm-provider-audit.md`.

@@ -191,3 +191,8 @@ This replaces the previous *Windows media unverified* limitation only for the **
 - La audición verifica formato PCM, duración real mediante FFprobe, tamaños, sample rate y canales; emite recibo con SHA-256 y estado `LISTENING_REVIEW_REQUIRED`. Se publica de forma atómica, sin sobrescribir evidencias previas.
 - Pruebas de regresión: audición íntegra, fallo sin recibo, proveedor no identificado, codec/duración inválidos. Guía de revisión en `docs/runbooks/voice-acceptance.md`.
 - **Pendiente:** contactar un TTS auténtico y escuchar los resultados, validar licencias y aprobación humana. Esta mejora no demuestra una voz comercial ni desbloquea publicación.
+
+
+### Iteración 23 — conexión LLM comprobable
+
+Se añade `audit:llm`, una solicitud JSON acotada con desafío aleatorio y consentimiento explícito para posibles cargos. La validación incluye un intercambio HTTP real en el servidor local de tests, autenticación, límites de tokens, protocolo JSON, persistencia sin secretos y evidencia no sobrescribible. **No se ha ejecutado un proveedor LLM externo de pago, ni aprobado un episodio por esta prueba.**

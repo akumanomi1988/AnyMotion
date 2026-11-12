@@ -28,7 +28,8 @@
     "soundtrack:pilot": "node dist/cli.js soundtrack examples/pilot.json --design examples/pilot.sound-design.json",
     "pipeline:episode2:sound": "node dist/cli.js pipeline examples/episode-0002-editorial-draft.json --preset preview --translation-en examples/episode-0002.en-US-editorial-draft.json --sound-design examples/episode-0002.sound-design.json",
     "pipeline:episode2": "node dist/cli.js pipeline examples/episode-0002-editorial-draft.json --preset preview --translation-en examples/episode-0002.en-US-editorial-draft.json",
-    "audition:voices": "node dist/tools/voice-audition.js"
+    "audition:voices": "node dist/tools/voice-audition.js",
+    "audit:llm": "node dist/tools/llm-provider-audit.js"
   },
   "dependencies": {
     "sharp": "0.34.1"
