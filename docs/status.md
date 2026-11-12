@@ -184,3 +184,10 @@ This replaces the previous *Windows media unverified* limitation only for the **
 - CI status for this iteration: pending until the branch update runs remotely.
 
 **Remaining gates:** renderer aesthetic/license selection, final characters and sets, authorized real LLM/TTS tests, native Windows benchmark on operator machine, six human-approved commercially published episodes and observed analytics. The product remains **PARTIAL / NOT COMMERCIAL-READY**.
+
+## Iteración 23 — prueba de voces comerciales (12/11/2026)
+
+- Se incorporó `npm run audition:voices -- --confirm I_ACCEPT_TTS_COSTS`, una prueba acotada de **ocho clips WAV** (dos estilos por personaje en es-ES/en-US) contra un proveedor HTTP compatible que configure el operador. Requiere consentimiento explícito porque la API puede facturar.
+- La audición verifica formato PCM, duración real mediante FFprobe, tamaños, sample rate y canales; emite recibo con SHA-256 y estado `LISTENING_REVIEW_REQUIRED`. Se publica de forma atómica, sin sobrescribir evidencias previas.
+- Pruebas de regresión: audición íntegra, fallo sin recibo, proveedor no identificado, codec/duración inválidos. Guía de revisión en `docs/runbooks/voice-acceptance.md`.
+- **Pendiente:** contactar un TTS auténtico y escuchar los resultados, validar licencias y aprobación humana. Esta mejora no demuestra una voz comercial ni desbloquea publicación.
